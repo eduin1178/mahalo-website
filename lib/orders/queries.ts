@@ -1,12 +1,22 @@
-import { and, count, desc, eq, gte, ilike, inArray, lte, or, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, ilike, inArray, lte, or, type SQL } from "drizzle-orm";
 
 import { getDb } from "@/lib/db/client";
 import {
+  addOns,
   customers,
   orders,
+  orderStatusHistory,
   plans,
   providers,
+  type AddOn,
+  type AddressJson,
+  type Customer,
+  type Order,
   type OrderStatus,
+  type OrderStatusHistoryRow,
+  type PaymentData,
+  type Plan,
+  type Provider,
 } from "@/lib/db/schema";
 
 export const ORDERS_PAGE_SIZE = 20;
@@ -125,3 +135,72 @@ export async function listOrders(filters: OrderListFilters = {}): Promise<OrderL
     totalPages: Math.max(1, Math.ceil(total / pageSize)),
   };
 }
+
+export type OrderDetail = {
+  order: Order;
+  customer: Customer | null;
+  provider: Provider | null;
+  plan: Plan | null;
+  addOns: AddOn[];
+  history: OrderStatusHistoryRow[];
+};
+
+export async function getOrderById(id: string): Promise<OrderDetail | null> {
+  const db = getDb();
+
+  const [orderRow] = await db
+    .select()
+    .from(orders)
+    .where(eq(orders.id, id))
+    .limit(1);
+  if (!orderRow) return null;
+
+  const [customerRow, providerRow, planRow, history] = await Promise.all([
+    orderRow.customerId
+      ? db
+          .select()
+          .from(customers)
+          .where(eq(customers.id, orderRow.customerId))
+          .limit(1)
+          .then((r) => r[0] ?? null)
+      : Promise.resolve(null),
+    orderRow.providerId
+      ? db
+          .select()
+          .from(providers)
+          .where(eq(providers.id, orderRow.providerId))
+          .limit(1)
+          .then((r) => r[0] ?? null)
+      : Promise.resolve(null),
+    orderRow.planId
+      ? db
+          .select()
+          .from(plans)
+          .where(eq(plans.id, orderRow.planId))
+          .limit(1)
+          .then((r) => r[0] ?? null)
+      : Promise.resolve(null),
+    db
+      .select()
+      .from(orderStatusHistory)
+      .where(eq(orderStatusHistory.orderId, id))
+      .orderBy(asc(orderStatusHistory.createdAt)),
+  ]);
+
+  const addOnIds = orderRow.addOnIds ?? [];
+  const addOnRows: AddOn[] =
+    addOnIds.length > 0
+      ? await db.select().from(addOns).where(inArray(addOns.id, addOnIds))
+      : [];
+
+  return {
+    order: orderRow,
+    customer: customerRow,
+    provider: providerRow,
+    plan: planRow,
+    addOns: addOnRows,
+    history,
+  };
+}
+
+export type { AddressJson, PaymentData };

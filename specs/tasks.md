@@ -184,7 +184,7 @@ Convenciones:
 - **Depende de**: T07, T05
 
 ### T14 · Detalle de Order + status timeline
-- **Estado**: [ ]
+- **Estado**: [x]
 - **Objetivo**: Gestionar el ciclo de vida de una orden.
 - **Acciones**:
   1. Página `/admin/orders/[id]` con secciones: Customer, Plan & Add-ons, Addresses, Payment, Schedule, Status Timeline.

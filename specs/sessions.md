@@ -29,6 +29,39 @@ Reglas:
 
 <!-- Las entradas se agregan debajo a partir de la primera sesión de implementación. -->
 
+## 2026-04-28 · T14 — Detalle de Order + status timeline
+
+- **Estado final**: ✅ completada (DB + build verde; UI E2E pendiente de sesión Clerk).
+- **Archivos tocados**:
+  - `lib/orders/queries.ts` — agregado `getOrderById(id)` que resuelve `order` + `customer/provider/plan` (FK pueden ser null por `set null`) + `addOns` (lookup vía `inArray(orders.addOnIds)`) + `history` (asc por `createdAt`). Usa `Promise.all` para paralelizar las 4 lecturas dependientes.
+  - `lib/orders/actions.ts` (nuevo) — `changeOrderStatus`, `rescheduleOrder` con Zod + `requireRole('agent')`. Ambas hacen `auth()` para `changedBy = userId` y envuelven update + insert de history en `db.transaction`.
+  - `app/admin/(panel)/orders/[id]/page.tsx` — detalle con secciones Customer, Plan & add-ons (con total = planPrice [autopay/standard según `autopayEnabled`] + sum de add-ons), Addresses, Payment, Schedule, Change status, Status timeline. `params: Promise<{ id }>`. Valida UUID y `notFound()` si no existe.
+  - `components/admin/orders/order-timeline.tsx` — server; lista descendente con badge + timestamp + `changedBy.slice(0,12)` + notas.
+  - `components/admin/orders/status-changer.tsx` — client; `useTransition` + `<form action={fn}>` style RSC server actions. Botón disabled si `status === currentStatus` (evita el error "already X" del action).
+  - `components/admin/orders/reschedule-form.tsx` — client; `<input type="datetime-local">` con `step={3600}` (UI hint de slots horarios). Validación final en server.
+  - `components/admin/orders/payment-data-view.tsx` — client; toggle Reveal/Hide. Por defecto enmascara number/exp/cvv (card) o routing/account (ACH).
+- **Decisiones clave**:
+  - **`validateInstallationWindow` como función no-exportada** dentro de `actions.ts`. Razón: con `"use server"` a nivel de archivo, **todo export debe ser async** (Turbopack falló con `Server Actions must be async functions`). Mover la función a un archivo aparte funcionaría pero es ruido para una helper de 6 líneas; mantenerla privada es lo correcto.
+  - **Window válida**: `Lun–Sáb (getDay !== 0)`, hora ∈ `[8, 17]`, `getTime() > now`. Acepta `17:00` como inicio de slot (consistente con el plan §T29 "8:00 a 17:00 cada hora"). El slot se interpreta como "punto de inicio" — la UI usa `<input type="datetime-local" step={3600}>` para sugerir incrementos horarios pero el server es la fuente de verdad.
+  - **`rescheduleOrder` deja la orden en `Scheduled`** (criterio T14). Si ya estaba en `Scheduled`, no inserta history nueva (evita ruido en timeline al ajustar la fecha sin cambio de fase). Si venía de otro status, agrega entrada con notes `Rescheduled to <iso>`.
+  - **`changeOrderStatus` rechaza el no-op** (`current.status === status`) en server. La UI deshabilita el botón en el mismo caso, pero la doble validación protege contra POST directo (server actions son endpoints reachable, ver `notes-next16.md` §9).
+  - **Transacción para status change**: insert history + update orders en mismo `db.transaction` para garantizar que no quede order con status nuevo sin entrada de historial (o viceversa).
+  - **Total calculado server-side** en la página: `planPrice + sum(addOns.price)`. Reproduce la lógica que tendrá el helper `calculateTotal` de T26; cuando T26 exista, refactorizar para reusarlo (y compartir con summary del embudo).
+  - **PaymentDataView con masking por defecto** + botón Reveal toggle. El criterio T14 dice "payment_data se muestra (admite mostrar oculto con toggle)" — interpretado como reveal opcional. CVV y exp se enmascaran completos cuando reveal=false; number y account/routing solo dejan tail (4). El comentario "stored in plain text per requirement" se renderiza al usuario para recordatorio operativo.
+- **Gotchas / aprendizajes**:
+  - **`"use server"` file-level prohíbe exports no-async.** Diferente del patrón de `lib/plans/actions.ts` donde no hay funciones helper exportadas. Si una action necesita compartir helpers, mantenerlos privados al módulo o moverlos a un archivo separado sin la directiva `"use server"`.
+  - `inArray(addOns.id, [])` en Drizzle genera SQL inválido (`IN ()`) — guard `addOnIds.length > 0` antes de la query es necesario. Mismo pattern aplicará a `selectAddOns` (T25) cuando lea por draft.
+  - `db.transaction()` en `node-postgres` Drizzle funciona sin config extra. Usado por primera vez en este proyecto; futuras actions multi-tabla (submitOrder T30) pueden replicar el patrón.
+  - `<input type="datetime-local">` retorna string `YYYY-MM-DDTHH:mm` sin TZ; al pasar a `new Date(value)` se interpreta en TZ del navegador. La validación de hora (`getHours()`) opera en TZ local del **server** — para deployment en US East/Central debería coincidir razonablemente con el cliente, pero anotar que un agente operando desde otra TZ podría ver edge cases en la frontera 17:00. Si se vuelve un problema, mover la validación a la TZ de la dirección de instalación.
+- **Verificación realizada**:
+  - `npm run build` → ✓ Compiled successfully (4.2s); ruta nueva `/admin/orders/[id]` listada como ƒ. TypeScript ok.
+  - Smoke test (`smoke-t14.ts` efímero, ya borrado): seed provider/plan/customer/order con `paymentData=card` + 2 entries en history → `getOrderById` retorna detail completo con customer/provider/plan resueltos, history en orden ascendente, `paymentData.type === 'card'`, `installationAddress.zip` correcto. Todos los checks ✓.
+  - **Limitación**: el toggle de payment, el form `datetime-local`, el botón de status change y el timeline visual requieren sesión Clerk con rol `agent` o `admin` (mismo bloqueo que T07–T13).
+- **Pendiente para próxima sesión**:
+  - T15 — Customers (listado + detalle). Reusar `getOrderById`-style pattern para `getCustomerById` que liste sus orders. Links cruzados ya predispuestos: el detalle de orden enlaza a `/admin/customers/[id]`.
+  - Cuando llegue sesión Clerk: smoke E2E `Pending → Created → Scheduled (vía reschedule) → Installed → Completed`, verificar timeline ordenado y que `changedBy` aparece con `userId.slice(0,12)`.
+  - Cuando exista helper `calculateTotal` (T26), refactorizar el cálculo inline de la página detalle para consumirlo.
+
 ## 2026-04-28 · T13 — Listado de Orders
 
 - **Estado final**: ✅ completada (DB + build verde; UI E2E pendiente de sesión Clerk como T08–T12).

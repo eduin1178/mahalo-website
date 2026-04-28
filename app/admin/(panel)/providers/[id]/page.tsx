@@ -7,9 +7,11 @@ import { ProviderActiveToggle } from "@/components/admin/providers/provider-acti
 import { ProviderEditForm } from "@/components/admin/providers/provider-edit-form";
 import { ProviderLogoForm } from "@/components/admin/providers/provider-logo-form";
 import { PlansSection } from "@/components/admin/plans/plans-section";
+import { AddOnsSection } from "@/components/admin/add-ons/add-ons-section";
 import { requireRole } from "@/lib/clerk/require-role";
 import { getProviderById } from "@/lib/providers/queries";
 import { listPlansByProvider } from "@/lib/plans/queries";
+import { listAddOnsByProvider } from "@/lib/add-ons/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +26,7 @@ export default async function ProviderDetailPage({
   if (!provider) notFound();
 
   const plans = await listPlansByProvider(provider.id);
+  const addOns = await listAddOnsByProvider(provider.id);
 
   return (
     <div className="space-y-8">
@@ -53,6 +56,7 @@ export default async function ProviderDetailPage({
         <TabsList>
           <TabsTrigger value="details">Details</TabsTrigger>
           <TabsTrigger value="plans">Plans ({plans.length})</TabsTrigger>
+          <TabsTrigger value="add-ons">Add-ons ({addOns.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="details" className="space-y-8 pt-4">
@@ -79,6 +83,10 @@ export default async function ProviderDetailPage({
 
         <TabsContent value="plans" className="pt-4">
           <PlansSection providerId={provider.id} plans={plans} />
+        </TabsContent>
+
+        <TabsContent value="add-ons" className="pt-4">
+          <AddOnsSection providerId={provider.id} addOns={addOns} />
         </TabsContent>
       </Tabs>
     </div>

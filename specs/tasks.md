@@ -139,7 +139,7 @@ Convenciones:
 - **Depende de**: T08
 
 ### T10 · CRUD Add-ons (por proveedor)
-- **Estado**: [ ]
+- **Estado**: [x]
 - **Objetivo**: Add-ons opcionales por proveedor.
 - **Acciones**:
   1. Actions en `lib/add-ons/actions.ts`: list/create/update/toggle.
@@ -150,7 +150,7 @@ Convenciones:
 - **Depende de**: T08
 
 ### T11 · Coverage manager (ZIPs)
-- **Estado**: [ ]
+- **Estado**: [x]
 - **Objetivo**: Asignar ZIP codes a cada proveedor.
 - **Acciones**:
   1. Actions: `listCoverageByProvider`, `addZips(providerId, zips[])`, `removeZip(providerId, zip)`.

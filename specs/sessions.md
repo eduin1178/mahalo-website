@@ -29,6 +29,56 @@ Reglas:
 
 <!-- Las entradas se agregan debajo a partir de la primera sesión de implementación. -->
 
+## 2026-04-28 · T11 — Coverage manager (ZIPs)
+
+- **Estado final**: ✅ completada (DB + build verde; UI E2E pendiente de sesión Clerk como T08–T10).
+- **Archivos tocados**:
+  - `lib/coverage/queries.ts` — `listCoverageByProvider` (search por prefijo + paginación server-side, default `pageSize=20`) y `findProvidersByZip` (join activos, retorna `[]` ante input no-numérico).
+  - `lib/coverage/actions.ts` — `addZips` (parsing tolerante a separadores, dedupe + `onConflictDoNothing`, retorna `{added, skipped}`), `removeZip`. Zod + `requireRole('admin')` + `revalidatePath('/admin/coverage')`.
+  - `app/admin/(panel)/coverage/page.tsx` — selector de proveedor + tabla paginada con search + panel "Add ZIPs" + paginación link-based; botón CSV import deshabilitado con tooltip.
+  - `components/admin/coverage/{provider-selector,coverage-search-form,remove-zip-button,add-zips-form}.tsx` — UI client.
+- **Decisiones clave**:
+  - **Estado en URL** (`?provider=&search=&page=`) en lugar de estado client. Un refresh o link compartido reproduce la vista exacta y la paginación se vuelve trivialmente prerefetcheable. Mismo patrón que pediremos para `/admin/orders` (T13).
+  - **Search por prefijo** con `LIKE 'XXX%'` aprovechando el btree existente sobre `zip_code` (`provider_coverage_zip_idx`). Suficiente para el caso de uso "filtrar 33xxx" y mucho más barato que un FTS o `ILIKE '%xxx%'`.
+  - `addZips` acepta separadores mixtos (`\s,;`), dedupe en memoria y delega la unicidad a la constraint `(provider_id, zip_code)` con `onConflictDoNothing`. Retorno `{added, skipped}` se muestra inline al usuario — feedback claro sin toast adicional.
+  - Cap de **2000 ZIPs por batch** para evitar payloads gigantes en una server action; el cliente real subirá el bulk vía CSV (T futura). Por encima del cap el form rechaza con mensaje único en `fieldErrors.zips`.
+  - `<select>` nativo en `ProviderSelector` en lugar del `Select` de `@base-ui/react`: el primer paso es de navegación (no formulario), HTML nativo es más accesible por teclado y evita un wrapper de portal solo para 8 opciones.
+- **Gotchas / aprendizajes**:
+  - Zod 4: `.errors` está deprecado, usar `.issues`. Para validación + transform en un solo campo (la textarea de ZIPs), `.transform((raw, ctx) => { ctx.addIssue(...); return z.NEVER })` es más legible que encadenar `.pipe(z.array(...))` y mantiene los errores agrupados bajo el mismo path (`zips`) para que el form los muestre inline.
+  - Drizzle `count()` se importa de `drizzle-orm` y devuelve un objeto `{value: number}` cuando se le da alias (`{ value: count() }`). No es `string` como otros agregados de pg.
+  - `searchParams` en Next 16 es `Promise` — `await sp` antes de leer, igual que `params` (ver `notes-next16.md`).
+  - Las clases utilitarias en el `<textarea>` se replican de los componentes shadcn `Input` para mantener look & feel; cuando exista un `<Textarea>` shadcn (no está en `base-nova`) hacer pasada de migración.
+- **Verificación realizada**:
+  - `npm run build` → ✓ Compiled successfully (5.3s); ruta nueva `/admin/coverage` listada como ƒ. TypeScript ok.
+  - Smoke test (script efímero `smoke-t11.ts` + DB en docker, ya borrado): insertó 50 ZIPs en AT&T → re-insert idempotente devuelve 0 nuevos ✓ → paginación `page=1` retorna 20, `page=3` retorna 10, `totalPages=3` ✓ → search prefix `'3315'` filtra a `['33150']` ✓ → solapamiento con Fios en `33101`: `findProvidersByZip('33101')` retorna ambos activos `['AT&T','Verizon Fios']` → al desactivar Fios retorna solo `['AT&T']` ✓ → tras eliminar 3 ZIPs uno-a-uno, AT&T queda con 47 ✓ → `findProvidersByZip('abcde')` retorna `[]` ✓. Confirma criterio de aceptación textual.
+  - **Limitación**: dialog/forms en navegador requieren sesión Clerk con `publicMetadata.role='admin'` (mismo bloqueo que T08–T10).
+- **Pendiente para próxima sesión**:
+  - T12 — Settings (key-value). Reusar el patrón URL state si requiere búsqueda/filtros, aunque seguramente sea más simple (form único).
+  - Cuando llegue sesión Clerk, smoke E2E del flujo: seleccionar proveedor → bulk add 50 ZIPs → search → remove → toggle visibilidad por desactivar proveedor.
+
+## 2026-04-28 · T10 — CRUD Add-ons (por proveedor)
+
+- **Estado final**: ✅ completada (DB + build verde; UI E2E pendiente de sesión Clerk como T08/T09).
+- **Archivos tocados**:
+  - `lib/add-ons/queries.ts` — `listAddOnsByProvider` (orden alfabético), `getAddOnById`, `providerHasActiveAddOns`.
+  - `lib/add-ons/actions.ts` — `createAddOn`, `updateAddOn`, `toggleAddOnActive` con Zod + `requireRole('admin')` + `revalidatePath`.
+  - `components/admin/add-ons/add-ons-section.tsx` — client; tabla con Edit/Toggle y dialog "New add-on".
+  - `app/admin/(panel)/providers/[id]/page.tsx` — agregado tab "Add-ons (N)" con `listAddOnsByProvider` server-side.
+- **Decisiones clave**:
+  - Sin `sortOrder` para add-ons (no lo pide el spec): orden alfabético por `name`. Si más adelante el cliente quiere prioridad explícita, agregar columna y migrar como en plans.
+  - `description` opcional con transform a `null` cuando viene vacío (la columna `text` permite null en schema). Mantiene la query de embudo simple (`addOn.description ?? "—"`).
+  - `providerHasActiveAddOns(providerId)` consulta directa con `limit(1)` — más barato que un `count(*)`. Lo consumirá T25 para auto-skip del paso de add-ons.
+  - Reuso 1:1 del patrón `PlansSection` excepto que **no** hay panel de reorder (no aplica) ni textarea de features. Se eliminaron también `speed`/`priceAutopay`.
+- **Gotchas / aprendizajes**:
+  - Reciclé el `priceSchema` de plans y el comentario sobre `numeric(10,2)` ↔ string vale exactamente igual aquí (precio devuelto como string por Drizzle, render con `Number().toFixed(2)`).
+  - El `description` viaja por `formData.get("description") ?? ""`; el transform de Zod lo convierte a `null` antes del insert para no persistir strings vacíos.
+- **Verificación realizada**:
+  - `npm run build` → ✓ Compiled successfully (5.9s); rutas `/admin/providers/[id]` siguen como ƒ. TypeScript ok.
+  - Smoke test (script efímero `smoke-t10.ts` + DB en docker, ya borrado): insert dos add-ons (uno active=true, otro active=false) → `listAddOnsByProvider` orden alfabético correcto → `providerHasActiveAddOns` retorna `true` con uno activo, `false` tras desactivarlo → `getAddOnById` resuelve → cleanup ok. Confirma criterio de aceptación: "si un proveedor no tiene add-ons activos, `providerHasActiveAddOns(providerId)` retorna `false`".
+- **Pendiente para próxima sesión**:
+  - T11 — Coverage manager (ZIPs); independiente de planes/add-ons. Requiere UI más rica (search + paginación) y `findProvidersByZip` para la landing.
+  - Cuando llegue sesión Clerk, smoke E2E del flujo de add-ons en el dashboard junto con T08/T09.
+
 ## 2026-04-28 · T09 — CRUD Plans (por proveedor)
 
 - **Estado final**: ✅ completada (CRUD a nivel DB + build verde; UI E2E pendiente de sesión Clerk).

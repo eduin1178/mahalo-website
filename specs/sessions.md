@@ -29,6 +29,68 @@ Reglas:
 
 <!-- Las entradas se agregan debajo a partir de la primera sesión de implementación. -->
 
+## 2026-04-27 · T06 — Integrar Clerk y proteger /admin
+
+- **Estado final**: ✅ completada
+- **Archivos tocados**:
+  - `proxy.ts` — `clerkMiddleware` con `auth.protect()` sobre `/admin(.*)` excluyendo `/admin/sign-in(.*)` para evitar loop de redirección. Convención `proxy.ts` de Next 16 (no `middleware.ts`, deprecado en v16.0.0).
+  - `app/layout.tsx` — root envuelto en `<ClerkProvider>` (de `@clerk/nextjs`, no `/server`).
+  - `app/admin/sign-in/[[...sign-in]]/page.tsx` — `<SignIn path routing="path" forceRedirectUrl="/admin" />`.
+  - `app/admin/page.tsx` — server component con `auth.protect()`, `currentUser()`, `<UserButton />` y rol del usuario.
+  - `lib/clerk/require-role.ts` — `getCurrentRole()` y `requireRole('admin'|'agent')` leyendo `sessionClaims.publicMetadata.role`.
+- **Decisiones clave**:
+  - Matcher de middleware excluye assets estáticos con la regex recomendada por Clerk + cubre `/(api|trpc)(.*)`. Necesario porque solo queremos proteger `/admin`, pero Clerk requiere correr el middleware en cualquier ruta donde después se llame `auth()`.
+  - Sign-in route excluida del `auth.protect()` dentro del propio middleware con `createRouteMatcher` — sin esto, `/admin/sign-in` también dispararía `protect()` y se perdería la página de login.
+  - `requireRole('agent')` permite también `admin` (admin tiene todo), `requireRole('admin')` exige rol exactamente `admin`. Misma semántica que se necesita para los guards de T07.
+  - `<UserButton />` sin `afterSignOutUrl`: la prop fue removida en `@clerk/nextjs` 7.x. La redirección post-signout se controla vía `NEXT_PUBLIC_CLERK_AFTER_SIGN_OUT_URL` o por la app de Clerk.
+- **Gotchas / aprendizajes**:
+  - **Migración a `proxy.ts`**: la decisión inicial (T01) era mantener `middleware.ts` esperando guía de Clerk, pero `clerkMiddleware()` retorna un handler estándar y funciona como default export de `proxy.ts` sin cambios. La doc oficial de Next 16 (`node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md`) confirma que la convención es `proxy.ts` desde v16.0.0. Build limpio, sin warning de deprecación.
+  - `auth()` en App Router devuelve **Promise** en Next 16 — siempre `await auth()` (incluido `auth.protect()`).
+  - Probar `/admin` sin sesión con `curl` retorna 404 si el `Accept` no es `text/html`: Clerk distingue document vs API request. Con `-H "Accept: text/html"` se ve el 307 de handshake correctamente.
+  - `ClerkProvider` se importa desde `@clerk/nextjs` (no `/server`). Importarlo desde `/server` no rompe types pero el componente no funciona.
+- **Verificación realizada**:
+  - `npm run build` → ✓ Compiled + TypeScript ok; rutas `/admin` y `/admin/sign-in/[[...sign-in]]` listadas como ƒ (dynamic). Warning de middleware esperado.
+  - `npm run dev` + `curl -H "Accept: text/html" http://localhost:3000/admin` → 307 de handshake Clerk (`__clerk_handshake=…`), confirma redirección a sign-in para usuarios no autenticados.
+  - `curl http://localhost:3000/admin/sign-in` → 200 (página accesible sin auth). **Criterio de aceptación cumplido.**
+- **Pendiente para próxima sesión**:
+  - T07 — sidebar + guard de rol. Reusar `requireRole` ya creado.
+  - Para validar visualmente con sesión real: usuario debe registrarse en la app Clerk (`pk_test_relaxed-calf-63`) y asignar manualmente `publicMetadata.role = 'admin'` desde el dashboard de Clerk.
+
+## 2026-04-27 · T05 — Schema de DB + primera migración
+
+- **Estado final**: ✅ completada
+- **Archivos tocados**:
+  - `lib/db/schema.ts` — 8 tablas Drizzle (`providers`, `plans`, `add_ons`, `provider_coverage`, `customers`, `orders`, `order_status_history`, `settings`) + tipos JSON (`AddressJson`, `PaymentData`).
+  - `lib/db/client.ts` — singleton `Pool` y `drizzle()` con lazy init en `globalThis` (apto para HMR de Next y para scripts CLI).
+  - `lib/db/migrate.ts` — runner de migraciones para `npm run db:migrate` (carga `dotenv/config`).
+  - `lib/db/seed.ts` — upsert de los 8 proveedores con `onConflictDoUpdate` por `name` (idempotente).
+  - `drizzle.config.ts` — dialect postgresql, schema → `lib/db/schema.ts`, out → `db/migrations`.
+  - `db/migrations/0000_sweet_star_brand.sql` + `db/migrations/meta/` — generados por `drizzle-kit generate`.
+  - `package.json` — scripts `db:generate`, `db:migrate`, `db:seed`, `db:studio` usando `tsx` (ya estaba instalado como devDep transitiva).
+  - `.env` — agregada `DATABASE_URL=postgres://mahalo:mahalo@localhost:5432/mahalo` para que los scripts (no Compose) puedan apuntar al `db` expuesto en `localhost:5432`.
+- **Decisiones clave**:
+  - `customers.email` con `UNIQUE` para que el embudo pueda hacer upsert por email en T27 sin duplicar clientes.
+  - `orders.customer_id`/`provider_id`/`plan_id` con `ON DELETE SET NULL` (no cascade): un draft no debe morir si reordenamos providers; el historial sigue siendo consultable.
+  - `provider_coverage` con `UNIQUE(provider_id, zip_code)` para que `addZips` (T11) sea idempotente sin checks previos.
+  - `settings` con PK en `key` (no autoincrement): la lógica clave-valor de T12 hace `INSERT … ON CONFLICT (key) DO UPDATE`.
+  - Numéricos de precio: `numeric(10,2)`. Drizzle los devuelve como `string` — convertir con `Number()` o `parseFloat` en el helper de cálculos (T26).
+  - Status como `varchar(24)` con `$type<OrderStatus>()` en lugar de `pgEnum` para evitar ALTER TYPE friccionoso si se agregan estados.
+  - Seed sin planes/cobertura — eso queda para T38 (seed extendido). Esta sesión solo cubre el criterio de aceptación: "8 filas en `providers`".
+- **Gotchas / aprendizajes**:
+  - Los scripts CLI (`tsx lib/db/*.ts`) no tienen el autoload de `.env` que sí hace Next: requieren `import "dotenv/config"` arriba de todo (antes de importar `client.ts`, ya que ese archivo lee `process.env.DATABASE_URL`).
+  - El `client.ts` usa `Proxy` sobre la instancia drizzle más un `getDb()` lazy: importar `db` desde `lib/db/client` no falla en build aunque `DATABASE_URL` no esté disponible en tiempo de import (Next tipa `db` como `NodePgDatabase<typeof schema>`).
+  - `drizzle-kit generate` por defecto usa `drizzle.config.ts` en root y emite migración + carpeta `meta/` con snapshot — ambos deben commitear.
+  - El `.env` original solo tenía secretos (Resend/Clerk). Sin `DATABASE_URL` los scripts fallan. Corregido y reflejado también en `.env.example`.
+- **Pendiente para próxima sesión**:
+  - T06 (Clerk + proteger `/admin`) — siguiente tarea. Las claves Clerk test ya están en `.env`, así que se puede trabajar sin bloqueo.
+  - Considerar agregar `npm run db:migrate` al CMD del runner Docker (mencionado como pendiente en T04). Mejor en la fase de hardening (T35) o pre-deploy (T39).
+- **Verificación realizada**:
+  - `npx drizzle-kit generate` → migración `0000_sweet_star_brand.sql` con 8 CREATE TABLE, 6 FKs, 7 índices.
+  - `docker compose up -d db` + `npm run db:migrate` → ✓ migrations applied.
+  - `npm run db:seed` → "providers in DB: 8" con los 8 nombres del PDF.
+  - `psql \dt` → confirma las 8 tablas en `public`.
+  - `npm run build` → ✓ Compiled successfully (3.3s), TypeScript ok. **Criterio de aceptación cumplido.**
+
 ## 2026-04-27 · T04 — Docker Compose + variables de entorno
 
 - **Estado final**: ✅ completada

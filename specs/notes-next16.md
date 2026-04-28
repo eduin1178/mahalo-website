@@ -23,11 +23,12 @@ Implicaciones para nuestras tareas:
 
 Tipos: usar los helpers globales `PageProps<'/ruta/[param]'>`, `LayoutProps<...>`, `RouteContext<...>` generados por `npx next typegen`. Documentar en T02/T03 que se ejecute al menos una vez tras instalar deps.
 
-## 2. `middleware` → `proxy` (deprecado, no eliminado aún)
-- El archivo `middleware.ts` y la función `middleware` siguen funcionando pero están deprecados; el nuevo nombre es `proxy.ts` con función `proxy()`.
-- **Pero `proxy` solo soporta runtime nodejs**, no edge.
-- Clerk hoy expone `clerkMiddleware()` y la documentación de Clerk asume `middleware.ts`. **Decisión**: mantenemos `middleware.ts` (T06) hasta que Clerk publique guía oficial para `proxy`. Aceptamos el warning de deprecación.
-- Si más adelante migramos: renombrar archivo, renombrar función, y revisar las flags `skipMiddlewareUrlNormalize` → `skipProxyUrlNormalize`.
+## 2. `middleware` → `proxy` (migrado en T06)
+- El archivo `middleware.ts` y la función `middleware` están **deprecados** desde v16.0.0. Nombre nuevo: `proxy.ts` con función `proxy()` (o default export).
+- `proxy` solo soporta runtime **nodejs** (no edge).
+- **Decisión actualizada (2026-04-28)**: el proyecto usa `proxy.ts`. Aunque la doc de Clerk aún menciona `middleware.ts`, `clerkMiddleware()` retorna un handler `(req, event) => Response | Promise<Response>` compatible con la convención `proxy` — basta exportarlo por default. Build sin warning de deprecación.
+- Flags renombradas: `skipMiddlewareUrlNormalize` → `skipProxyUrlNormalize` (no las usamos hoy).
+- Codemod oficial: `npx @next/codemod@canary middleware-to-proxy .`
 
 ## 3. Caching APIs (afecta server actions)
 - `revalidateTag(tag)` ahora **requiere segundo argumento** con un `cacheLife` profile. Llamada antigua produce error TS. Reemplazo: `revalidateTag('orders', 'max')`.
@@ -89,7 +90,7 @@ Mejoras automáticas (layout dedup, prefetch incremental). Sin cambios de códig
 Las decisiones del plan técnico **siguen siendo válidas**. Ajustes finos a propagar:
 
 1. **§5 Estado del embudo**: la cookie `mahalo_order_id` se lee con `await cookies()`. Documentado en T23 cuando se implemente.
-2. **§6 Auth y roles**: middleware sigue como `middleware.ts`; aceptamos warning de deprecación hasta guía oficial de Clerk para `proxy`.
+2. **§6 Auth y roles**: el guard de Clerk vive en `proxy.ts` (no `middleware.ts`) según la convención de Next 16. `clerkMiddleware()` se exporta por default — funciona sin warning.
 3. **§9 Variables de entorno**: ningún cambio.
 4. **§11 Convenciones de código**: agregar regla "Las server actions usan `updateTag` para mutaciones admin que requieren read-your-writes; `revalidateTag(tag, 'max')` para listados públicos; `refresh()` para refrescar router cliente sin invalidar caché."
 5. **Tasks afectadas que deben recordar el await**: T13, T14, T15, T08, T09 (params/searchParams async), T23 (cookies async).

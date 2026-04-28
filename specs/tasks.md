@@ -69,7 +69,7 @@ Convenciones:
 - **Depende de**: T02
 
 ### T05 · Schema de DB + primera migración
-- **Estado**: [~]
+- **Estado**: [x]
 - **Objetivo**: Modelo de datos completo persistido.
 - **Acciones**:
   1. Crear `lib/db/schema.ts` con las 8 tablas de `spec.md` §8 usando Drizzle.
@@ -87,7 +87,7 @@ Convenciones:
 ## Fase 1 — Admin foundations
 
 ### T06 · Integrar Clerk y proteger /admin
-- **Estado**: [ ]
+- **Estado**: [x]
 - **Objetivo**: Solo usuarios autenticados acceden a `/admin/*`.
 - **Acciones**:
   1. Configurar `<ClerkProvider>` en `app/layout.tsx`.

@@ -10,7 +10,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx lib/db/migrate.ts",
     "db:seed": "tsx lib/db/seed.ts",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "set-role": "tsx scripts/set-role.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",

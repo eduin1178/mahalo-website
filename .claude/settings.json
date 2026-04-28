@@ -26,7 +26,8 @@
       "PowerShell(Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { $_.CommandLine -match 'next' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }; \"done\")",
       "Bash(git mv *)",
       "Bash(echo \"pid=$!\")",
-      "Bash(npx tsx *)"
+      "Bash(npx tsx *)",
+      "Bash(npx tsc *)"
     ]
   }
 }

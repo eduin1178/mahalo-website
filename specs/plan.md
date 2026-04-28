@@ -71,9 +71,12 @@ Se persiste como una fila en `orders` con status `Draft` desde el paso 1. Cada p
 El paso 8 cambia el status a `Pending` y dispara notificaciones. El `orderId` viaja en searchParams o cookie firmada.
 
 ## 6. Auth y roles
-- Middleware de Clerk en la raíz (`middleware.ts`) protegiendo `/admin/*`.
+- En Next.js 16 el middleware se llama **`proxy.ts`** (renombrado desde `middleware.ts`). Está en la raíz, usa `clerkMiddleware` y protege `/admin/*` excepto `/admin/sign-in`.
 - Rol del usuario en `publicMetadata.role` (`admin` | `agent`).
 - Helper `requireRole(role)` en `lib/clerk/` para guards en server components y actions.
+- **Panel privado por allowlist**: Clerk permite el sign-up por defecto, pero el layout `app/admin/(panel)/layout.tsx` bloquea a usuarios sin rol asignado mostrando "Pending authorization" (no menús, no acceso a páginas internas).
+- **Bootstrap del primer admin**: env `ADMIN_BOOTSTRAP_EMAILS` (CSV de emails). En el primer hit al panel, si el email coincide y el rol está vacío, se auto-promueve a `admin` vía `clerkClient.users.updateUser`. Pensado solo para semilla — después se gestiona desde Clerk dashboard o con el CLI.
+- **CLI de roles**: `npm run set-role -- <email> <admin|agent>` (script en `scripts/set-role.ts`) usa `@clerk/backend` para mutar `publicMetadata.role` sin abrir el dashboard.
 
 ## 7. Integraciones externas
 | Wrapper | Ubicación | Responsabilidad |
@@ -94,6 +97,7 @@ DATABASE_URL
 CLERK_PUBLISHABLE_KEY
 CLERK_SECRET_KEY
 NEXT_PUBLIC_CLERK_SIGN_IN_URL=/admin/sign-in
+ADMIN_BOOTSTRAP_EMAILS  # CSV de emails que se auto-promueven a admin en su primer login
 RESEND_API_KEY
 RESEND_FROM_EMAIL=noreply@mahaloenterprise.com
 USPS_USER_ID            # o el credential que aplique según API USPS vigente

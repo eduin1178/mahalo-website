@@ -29,6 +29,33 @@ Reglas:
 
 <!-- Las entradas se agregan debajo a partir de la primera sesión de implementación. -->
 
+## 2026-04-28 · T15 — Customers (listado + detalle)
+
+- **Estado final**: ✅ completada (DB + build verde; UI E2E pendiente de sesión Clerk como T08–T14).
+- **Archivos tocados**:
+  - `lib/customers/queries.ts` — `listCustomers({search, page, pageSize})` con `leftJoin orders` agregando `count(orders.id)` + `max(orders.createdAt)` agrupado por `customers.id`. **Excluye orders en `Draft`** del agregado vía `and(eq(orders.customerId, customers.id), ne(orders.status, "Draft"))` aplicado al ON de la join (no al WHERE — un WHERE filtraría customers sin orders). Search ilike sobre firstName/lastName/email/phone. `getCustomerById(id)` retorna `customer` + lista de orders con provider/plan resueltos vía leftJoin (incluye drafts en el detalle, son visibles para el agente).
+  - `app/admin/(panel)/customers/page.tsx` — listing con tabla shadcn (name link, email, phone, orders count alineado a la derecha, last order date) + paginación link-based replicando el patrón de T13.
+  - `app/admin/(panel)/customers/[id]/page.tsx` — detail con sección Personal info + tabla de orders enlazadas a `/admin/orders/[id]`. `params: Promise<{ id }>` (Next 16 async).
+  - `components/admin/customers/customers-search-form.tsx` — form GET simple `?q=` (sin estado client; un solo input → `<form method="get">` basta, no requiere `router.push` como T13).
+- **Decisiones clave**:
+  - **`Draft` excluido del count y del `lastOrderAt`** (lista) pero **incluido en el detalle**. Razón: en el listado los agentes quieren métricas de actividad real (drafts del embudo abandonado inflarían el conteo); en el detalle del cliente sí interesa ver todo lo asociado, incluido el draft que aún no convirtió. Si el usuario reporta que prefiere ver drafts en la lista, quitar el `nonDraft` de la join en `listCustomers`.
+  - **`ne(status, 'Draft')` en el ON de la leftJoin, no en el WHERE.** Llevarlo al WHERE convertiría implícitamente el leftJoin en innerJoin (eliminaría customers sin orders no-draft, ej. Bob = 0 orders). Patrón a recordar para futuros agregados con leftJoin condicional.
+  - **`coalesce(count(...), 0)::int`** explícito porque `count()` con leftJoin puede ser 0 y Drizzle/pg lo devuelve como `string` (bigint). Castear a int en SQL evita el `Number()` ad-hoc en JS.
+  - **Form GET nativo** para search: solo un input, no necesita state client. El navegador serializa `q=` y submit recarga server-side. Más simple que `OrdersFilters` que sí necesita client (multi-select de status).
+  - **Orden por `customers.createdAt` desc** (no por `lastOrderAt`): los más recientes son los que probablemente requieren atención del agente. Si el cliente prefiere "ordenar por última actividad", cambiar a `desc(max(orders.createdAt))` (necesita ser declarado como sql sortable).
+  - **No agregar nav-config**: `Customers` ya estaba en `components/admin/nav-config.ts:28` desde T07 con `adminOnly: false`. Sólo había que crear las rutas.
+- **Gotchas / aprendizajes**:
+  - El cross-link inverso ya estaba listo: `app/admin/(panel)/orders/[id]/page.tsx:102` enlaza a `/admin/customers/${customer.id}`. T15 solo cierra el círculo creando el destino. Confirma "links cruzados" del criterio de aceptación.
+  - `max(orders.createdAt)` en Drizzle devuelve `Date | null` cuando se usa en agregado con leftJoin (null si no hay rows). No tipo issue, solo recordar para el render del `—`.
+  - Filtrar por `ne(status, 'Draft')` en la join condition es la primera vez en este proyecto que se usa una condición compuesta en el ON de `leftJoin`. Funciona out-of-the-box pasando `and(...)` como segundo arg.
+- **Verificación realizada**:
+  - `npm run build` → ✓ Compiled successfully (5.9s); rutas nuevas `/admin/customers` y `/admin/customers/[id]` listadas como ƒ. TypeScript ok.
+  - Smoke test (`smoke-t15.ts` efímero, ya borrado): seed Alice (2 orders Pending+Completed + 1 Draft) y Bob (0 orders) → `listCustomers` retorna Alice con `orderCount=2` y `lastOrderAt` no-null, Bob con `orderCount=0` y `lastOrderAt=null` ✓ (confirma exclusión de Draft sin descartar customers sin orders) → search por substring de email retorna el customer correcto ✓ → `getCustomerById(alice)` retorna 3 orders en el detalle (incluye Draft) con provider/plan resueltos ✓ → cleanup ok.
+  - **Limitación**: navegación visual requiere sesión Clerk con rol `agent` o `admin` (mismo bloqueo que T07–T14).
+- **Pendiente para próxima sesión**:
+  - **Cierra Fase 1**. Próxima fase: **Fase 2 — Landing pública**, comenzando por T16 (layout público + navegación). Cambia el contexto de admin → marketing; aplicar `--mahalo-gradient-soft` y arcos Wi-Fi del design system §3/§8.
+  - Cuando llegue sesión Clerk, smoke E2E del flujo: orders → customer link → orders del customer → vuelta al order. Ya predispuesto bidireccionalmente.
+
 ## 2026-04-28 · T14 — Detalle de Order + status timeline
 
 - **Estado final**: ✅ completada (DB + build verde; UI E2E pendiente de sesión Clerk).

@@ -100,6 +100,21 @@ Convenciones:
 - **Depende de**: T05
 - **Bloqueada por cliente**: Clerk app + claves (placeholder permite trabajar local).
 
+### T06b · Allowlist y bootstrap del primer admin
+- **Estado**: [x]
+- **Objetivo**: Hacer el panel privado y permitir promover al primer admin sin tocar el dashboard de Clerk.
+- **Acciones**:
+  1. `lib/clerk/authorize.ts` — `authorizeAdminUser()` resuelve el rol del request actual; si el email coincide con `ADMIN_BOOTSTRAP_EMAILS` y el rol está vacío, lo asciende a `admin` vía `clerkClient.users.updateUser`.
+  2. `app/admin/(panel)/layout.tsx` — usa el helper. Si retorna `pending`, renderiza pantalla "Pending authorization" + `<SignOutButton>` (no menús, no acceso a páginas internas). Reemplaza al `auth.protect()` directo.
+  3. `scripts/set-role.ts` — CLI (`npm run set-role -- <email> <admin|agent>`) que mutta `publicMetadata.role` con `@clerk/backend`.
+  4. `.env.example` — añadir `ADMIN_BOOTSTRAP_EMAILS=`.
+- **Deliverables**: helper, script, layout actualizado, env documentada.
+- **Criterio de aceptación**:
+  - Usuario nuevo sin rol y fuera de la allowlist ve "Pending authorization" al entrar a `/admin`, sin menús ni acceso a `/admin/orders`, etc.
+  - Email en `ADMIN_BOOTSTRAP_EMAILS` queda como `admin` tras su primer login.
+  - `npm run set-role -- foo@bar.com agent` actualiza el rol y el usuario ve solo los menús permitidos.
+- **Depende de**: T06
+
 ### T07 · Layout admin con sidebar y guard de rol
 - **Estado**: [x]
 - **Objetivo**: Estructura común para todas las páginas admin.
@@ -196,7 +211,7 @@ Convenciones:
 - **Depende de**: T13
 
 ### T15 · Customers (listado + detalle)
-- **Estado**: [ ]
+- **Estado**: [x]
 - **Objetivo**: Vista de clientes registrados.
 - **Acciones**:
   1. `/admin/customers` con tabla (nombre, email, phone, # órdenes, última orden).

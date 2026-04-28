@@ -1,32 +1,30 @@
-import type { LucideIcon } from "lucide-react";
-import {
-  Building2,
-  ClipboardList,
-  Cog,
-  Layers,
-  MapPinned,
-  PackagePlus,
-  Users,
-} from "lucide-react";
-
 import type { AppRole } from "@/lib/clerk/require-role";
+
+export type NavIconKey =
+  | "providers"
+  | "plans"
+  | "addOns"
+  | "coverage"
+  | "orders"
+  | "customers"
+  | "settings";
 
 export type NavItem = {
   label: string;
   href: string;
-  icon: LucideIcon;
+  icon: NavIconKey;
   /** If true, only role `admin` can see this entry. Otherwise visible to admin + agent. */
   adminOnly: boolean;
 };
 
 export const ADMIN_NAV: NavItem[] = [
-  { label: "Providers", href: "/admin/providers", icon: Building2, adminOnly: true },
-  { label: "Plans", href: "/admin/plans", icon: Layers, adminOnly: true },
-  { label: "Add-ons", href: "/admin/add-ons", icon: PackagePlus, adminOnly: true },
-  { label: "Coverage", href: "/admin/coverage", icon: MapPinned, adminOnly: true },
-  { label: "Orders", href: "/admin/orders", icon: ClipboardList, adminOnly: false },
-  { label: "Customers", href: "/admin/customers", icon: Users, adminOnly: false },
-  { label: "Settings", href: "/admin/settings", icon: Cog, adminOnly: true },
+  { label: "Providers", href: "/admin/providers", icon: "providers", adminOnly: true },
+  { label: "Plans", href: "/admin/plans", icon: "plans", adminOnly: true },
+  { label: "Add-ons", href: "/admin/add-ons", icon: "addOns", adminOnly: true },
+  { label: "Coverage", href: "/admin/coverage", icon: "coverage", adminOnly: true },
+  { label: "Orders", href: "/admin/orders", icon: "orders", adminOnly: false },
+  { label: "Customers", href: "/admin/customers", icon: "customers", adminOnly: false },
+  { label: "Settings", href: "/admin/settings", icon: "settings", adminOnly: true },
 ];
 
 export function visibleNavFor(role: AppRole | null): NavItem[] {

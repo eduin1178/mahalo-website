@@ -162,7 +162,7 @@ Convenciones:
 - **Depende de**: T08
 
 ### T12 · Settings (key-value)
-- **Estado**: [ ]
+- **Estado**: [x]
 - **Objetivo**: Configurar `notification_email` y `webhook_url` desde el admin.
 - **Acciones**:
   1. Actions: `getSetting(key)`, `setSetting(key, value)`, `getAllSettings()`.
@@ -173,7 +173,7 @@ Convenciones:
 - **Depende de**: T07
 
 ### T13 · Listado de Orders
-- **Estado**: [ ]
+- **Estado**: [x]
 - **Objetivo**: Agentes ven todas las órdenes.
 - **Acciones**:
   1. Página `/admin/orders` con tabla: id corto, customer, provider, plan, status (badge con color del PDF), scheduled_at, created_at.

@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils"
 
 export type OrderStatus =
+  | "Draft"
   | "Pending"
   | "Created"
   | "Scheduled"
@@ -9,6 +10,7 @@ export type OrderStatus =
   | "Cancelled"
 
 const STATUS_STYLES: Record<OrderStatus, string> = {
+  Draft: "bg-muted text-muted-foreground",
   Pending: "bg-warning/12 text-warning",
   Created: "bg-info/12 text-info",
   Scheduled: "bg-purple/12 text-purple",

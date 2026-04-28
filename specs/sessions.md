@@ -29,6 +29,65 @@ Reglas:
 
 <!-- Las entradas se agregan debajo a partir de la primera sesión de implementación. -->
 
+## 2026-04-28 · T13 — Listado de Orders
+
+- **Estado final**: ✅ completada (DB + build verde; UI E2E pendiente de sesión Clerk como T08–T12).
+- **Archivos tocados**:
+  - `lib/orders/queries.ts` — `listOrders({statuses, providerId, dateFrom, dateTo, search, page, pageSize})` con joins LEFT a `customers/providers/plans`, orden `desc(createdAt)`, paginación server-side y `count()` con el mismo `where`.
+  - `app/admin/(panel)/orders/page.tsx` — `requireRole('agent')`, parseo de `searchParams` (status repetidos, provider, from/to, q, page), tabla shadcn con id corto, customer, provider, plan, status badge, scheduled, created. Componente `Pagination` interno.
+  - `components/admin/orders/orders-filters.tsx` — client form: search (input), provider (select nativo), date range (`type="date"`), status (chips toggle multi-select), botones Apply/Reset que pushean URL.
+  - `components/brand/StatusBadge.tsx` — agregado `Draft` al tipo `OrderStatus` con estilo neutro (`bg-muted`). Necesario porque la lista incluye drafts del embudo.
+- **Decisiones clave**:
+  - **Status como `?status=` repetido** (multi-select serializado vía `URLSearchParams.append`), no comma-separado. Native al estándar de query strings, mejor UX al copiar/pegar URL y `parseStatuses` valida cada valor contra `orderStatusValues` antes de pasarlo a `inArray()`. Mismo patrón aplicará a futuros filtros multi.
+  - **Filtros como client component con `router.push`** en lugar de `<form method="get">`. Razón: status multi-select requiere estado client (toggle de chips); usar form GET implicaría inputs hidden generados al toggle, más fricción que manejar el state. El reset también navega vía `router.push("/admin/orders")` para limpiar URL.
+  - `requireRole('agent')` (no `admin`) — Orders es shared con agents según `nav-config.ts`. El listado no permite gestión, solo lectura/navegación.
+  - **Parseo de fechas**: input `type="date"` da `YYYY-MM-DD`; convierto a UTC `T00:00:00.000Z` (from) y `T23:59:59.999Z` (to). El usuario filtra en su zona pero acá tratamos día-completo en UTC — suficiente para el caso "rango de creación" sin TZ-aware UI. Si más adelante se necesita filtrado preciso por TZ del usuario, mover a un helper que reciba IANA TZ.
+  - **`ilike` para búsqueda** (case-insensitive) sobre `firstName/lastName/email` con `%pattern%`. Sin índice trigram — el dataset esperado (<10k orders) no lo justifica todavía; si crece, evaluar `pg_trgm` GIN index. El `or()` se importa de drizzle-orm y devuelve `SQL | undefined` (de ahí el guard `if (searchCond)`).
+  - **`leftJoin` para todas las relaciones** (customer/provider/plan): drafts pueden tener `customerId/providerId/planId` null, y `set null` en FK garantiza orphans tras toggle de proveedor. La UI muestra `—` en esos casos.
+  - StatusBadge ahora cubre `Draft`: necesario para no crashear cuando la lista incluye órdenes en `Draft` (que se ven en `/admin/orders` por requerimiento de T23: "el draft se ve como `Draft`").
+- **Gotchas / aprendizajes**:
+  - Drizzle `or(...)` devuelve `SQL | undefined` cuando recibe condicionales que pueden ser undefined; tipear el array como `SQL[]` y filtrar antes de `push` evita el error TS. Diferente de `and()` que es más permisivo.
+  - El `count()` con joins requiere replicar exactamente los mismos joins que la query de filas si hay condiciones que tocan tablas joined. Acá solo `customers` participa en filtros (search), así que el count usa `leftJoin customers` también — providers/plans no se joinean en count para minimizar trabajo.
+  - `searchParams` en Next 16 es Promise (igual que ya documentado); el tipo del param `sp` para `Pagination` se obtuvo con `Awaited<SearchParams>` para evitar duplicar el shape.
+  - El tipo `string | string[]` para `status` en searchParams es propio de Next App Router cuando hay parámetros repetidos en URL — `?status=A&status=B` llega como array, `?status=A` como string.
+- **Verificación realizada**:
+  - `npm run build` → ✓ Compiled successfully (5.0s); ruta nueva `/admin/orders` listada como ƒ. TypeScript ok.
+  - Smoke test (script efímero `smoke-t13.ts` + DB en docker, ya borrado): seed 2 customers + 2 plans + 3 orders distribuidas → filter `statuses=['Pending']` aísla o1 ✓ → `providerId=p2` aísla o2 ✓ → `search='alice'` retorna o1+o2 (mismo customer) y excluye o3 (Bob) ✓ → search por substring de email retorna o3 ✓ → combinación `Cancelled + p1` retorna solo o3 ✓ → `pageSize=2 page=1` con `total=3` produce `totalPages=2, rows.length=2` ✓ → row shape resuelve customer/provider/plan via leftJoin ✓ → cleanup ok.
+  - **Limitación**: navegación visual (chips toggle, datepickers, paginación) requiere sesión Clerk con rol `agent` o `admin` (mismo bloqueo que T07–T12).
+- **Pendiente para próxima sesión**:
+  - T14 — Detalle de Order + status timeline. Usará `params: Promise<{ id }>` (Next 16 async) y reusará `StatusBadge` ya extendido con `Draft`. La action `changeOrderStatus` debe insertar en `order_status_history` con `changedBy = clerk userId`.
+  - Cuando llegue sesión Clerk, smoke E2E del flujo de filtros: aplicar status multi → cambiar provider → date range → search → reset → URL refleja cada combinación.
+
+## 2026-04-28 · T12 — Settings (key-value)
+
+- **Estado final**: ✅ completada (DB + build verde; UI E2E pendiente de sesión Clerk como en T08–T11).
+- **Archivos tocados**:
+  - `lib/settings/queries.ts` — `getSetting`, `getAllSettings` + constante `KNOWN_SETTING_KEYS = ['notification_email','webhook_url']`.
+  - `lib/settings/get.ts` — wrappers `getSettingCached` / `getAllSettingsCached` con `react.cache` para cache por request (consumible desde server actions de notificaciones T32/T33).
+  - `lib/settings/actions.ts` — `saveKnownSettings` (upsert paralelo de los 2 fijos), `setSetting` (custom KV), `deleteSetting`. Validación Zod + `requireRole('admin')` + `revalidatePath('/admin/settings')`.
+  - `app/admin/(panel)/settings/page.tsx` — sección "Notifications" con form de los 2 keys + sección "Custom settings" con tabla + form add.
+  - `components/admin/settings/known-settings-form.tsx` — client form para los 2 keys conocidos.
+  - `components/admin/settings/custom-settings-section.tsx` — tabla con edit/save/delete por fila + form para agregar (key con regex `^[a-z][a-z0-9_]{0,79}$`, value libre).
+- **Decisiones clave**:
+  - `notification_email` y `webhook_url` aceptan **string vacío** para "deshabilitar" la notificación. Si el cliente borra el valor desde UI, T33 (`triggerWebhook`) y T32 (`sendNewOrderEmail`) deben tratar `'' | null` como noop. Este contrato (string vacío = disabled) es más simple que NULL/missing-row y mantiene la UI determinista (ver el form deja el campo vacío en lugar de "ausente").
+  - Validación de URL hecha con `new URL()` + check de protocolo `http/https` en lugar de regex. Aceptar paths/queries arbitrarios sin falsos positivos.
+  - **`saveKnownSettings` upsertea ambos keys siempre** (no compara contra el valor previo). Más simple y atómicamente consistente con el form (un submit = un estado completo). Costo: 2 UPDATEs por save aunque el usuario solo cambie uno; despreciable.
+  - **Custom KV**: el form de "add" reusa `setSetting` (el mismo action sirve para crear y editar — es upsert). La tabla edita inline con `<Input>` controlado y un botón Save por fila; el botón Save se deshabilita si `value === row.value` para que no haya escrituras espurias.
+  - **Reserved keys**: el schema Zod de custom rechaza `notification_email`/`webhook_url` para forzar a editarlos en el form principal y evitar duplicación visual. La página filtra rows ya conocidos al pasar a `CustomSettingsSection`.
+  - `react.cache` en `lib/settings/get.ts` (no Next `unstable_cache`): la nota de Next 16 (`notes-next16.md` §3) recomienda `cacheTag`/`cacheLife` para cache cross-request, pero acá solo necesitamos dedupe **dentro** de una request (settings se leen en page + en email/webhook actions). `cache()` de React es la primitiva correcta y no requiere migrar a `'use cache'`.
+- **Gotchas / aprendizajes**:
+  - Tabla `settings` tiene PK en `key` (sin id uuid), por eso `onConflictDoUpdate({ target: settings.key, ... })` apunta directo a la columna PK. Visto en `lib/db/schema.ts:154-160`.
+  - Drizzle `db.insert(...).onConflictDoUpdate(...)` requiere pasar `set: { ..., updatedAt: new Date() }` explícito porque el default `defaultNow()` solo aplica en INSERT puro. Si lo omites, `updatedAt` queda congelado en el primer insert.
+  - `formData.get('webhook_url') ?? ''` en lugar de `?? undefined`: con `undefined` Zod aplicaría el coerce default y validaría contra `z.string()` causando "Required". Tratar el form como "string siempre" (vacío = vacío) elimina la rama de undefined.
+  - El registry shadcn `base-nova` no incluye un componente `<Switch>` ni `<Toggle>`, así que el botón de "Save" inline en cada fila usa `Button variant="ghost" size="sm"` con `disabled` derivado del diff. Si en el futuro queremos un toggle visual para "active/inactive" en custom settings, instalar/escribir `<Switch>` (mismo gap que `form` y `textarea` ya documentados en T03/T09/T11).
+- **Verificación realizada**:
+  - `npm run build` → ✓ Compiled successfully (5.4s); ruta nueva `/admin/settings` listada como ƒ. TypeScript ok.
+  - Smoke test (script efímero `smoke-t12.ts` + DB en docker, ya borrado): insert `notification_email=ops@example.com` → upsert mismo key con `ops2@example.com` → `getSetting('notification_email')` retorna `'ops2@example.com'` ✓ → insertados `webhook_url` y `feature_xyz` (custom) → `getAllSettings()` retorna las 3 ordenadas alfabéticamente ✓ → `delete feature_xyz` → quedan solo los 2 known ✓. Confirma criterio de aceptación: "cambiar el valor desde UI persiste y se lee desde server actions".
+  - **Limitación**: edición real desde UI requiere sesión Clerk con `publicMetadata.role='admin'` (mismo bloqueo que T08–T11).
+- **Pendiente para próxima sesión**:
+  - T13 — Listado de Orders (Fase 1 sigue). Dependerá de patrones de URL state ya establecidos en T11 (search/filtros server-side por `searchParams`).
+  - T32/T33 (notificaciones) consumirán `getSettingCached('notification_email')` y `getSettingCached('webhook_url')`; tratar string vacío como noop ahí.
+
 ## 2026-04-28 · T11 — Coverage manager (ZIPs)
 
 - **Estado final**: ✅ completada (DB + build verde; UI E2E pendiente de sesión Clerk como T08–T10).

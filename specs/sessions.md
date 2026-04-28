@@ -29,6 +29,33 @@ Reglas:
 
 <!-- Las entradas se agregan debajo a partir de la primera sesión de implementación. -->
 
+## 2026-04-28 · T09 — CRUD Plans (por proveedor)
+
+- **Estado final**: ✅ completada (CRUD a nivel DB + build verde; UI E2E pendiente de sesión Clerk).
+- **Archivos tocados**:
+  - `lib/plans/queries.ts` — `listPlansByProvider` (orden `sortOrder asc, name asc`) y `getPlanById`.
+  - `lib/plans/actions.ts` — server actions `createPlan`, `updatePlan`, `togglePlanActive`, `reorderPlans`. Zod + `requireRole('admin')` + `revalidatePath`.
+  - `components/admin/plans/plans-section.tsx` — client; tabla, dialogs New/Edit, toggle Active y panel "Quick reorder".
+  - `app/admin/(panel)/providers/[id]/page.tsx` — reorganizado con shadcn `Tabs` (Details / Plans). Carga `listPlansByProvider` server-side.
+- **Decisiones clave**:
+  - Drizzle `numeric(10,2)` se inserta y recibe como **string** ("49.99"). El form lo manda como string, Zod lo valida con regex (`/^\d+(\.\d{1,2})?$/`) y se persiste sin conversión a `Number`. El cast a `Number` solo ocurre en render para `toFixed(2)`. Coherente con la nota de T05.
+  - `features` viaja como textarea (una línea = un feature). El parseo está en el `featuresSchema` de Zod (`split /\r?\n/` + trim + filter empty). Más simple y testable que un control de tags y suficiente para el panel admin.
+  - `reorderPlans` recibe `{ providerId, orders[] }` directamente (no `FormData`) — la UI del panel "Quick reorder" mantiene un `draft` cliente y al guardar manda el array completo. Encaja con la nota de la tarea ("reorder simple con inputs numéricos `sort_order`; drag-and-drop opcional") y sirve también para una futura migración a DnD: la action ya acepta cualquier orden completo.
+  - `EditPlanDialog` por fila monta un `<Dialog>` independiente. Costo de árbol bajo (no hay >10 planes por proveedor en producción esperada). Si crece, mover a un único dialog controlado por estado en `PlansSection`.
+  - Tabs con `defaultValue="details"` y conteo en la pestaña Plans (`Plans (N)`) — quick-glance del estado del proveedor sin abrir el tab.
+- **Gotchas / aprendizajes**:
+  - `DialogTrigger` del registry `base-nova` usa el render-prop `render={<Button …/>}` igual que en T07/T08. No usar `asChild` estilo Radix.
+  - El widget `<textarea>` no está en shadcn `base-nova` (igual que `form` lo fue en T03). Lo escribí inline con clases coherentes con `Input` (`border border-input`, etc.) en lugar de instalar uno custom.
+  - tsx falla con top-level await en archivos `.ts` (esbuild output cjs por defecto). Para smoke tests CLI envolver en `async function main()` + `.then(() => process.exit(0))`. Aplicará a futuros scripts de verificación rápida.
+  - `mahalo-blue-50` no existe como token (la paleta tiene `blue-600/700/500/400`). Usé `bg-muted/40` para el contenedor del reorder. Si más adelante quieres un fondo de marca suave, agregar `--mahalo-blue-50` a `globals.css`.
+- **Verificación realizada**:
+  - `npm run build` → ✓ Compiled successfully (4.4s); rutas `/admin/providers/[id]` siguen como ƒ. TypeScript ok.
+  - Smoke test (script efímero `smoke-t09.ts` con tsx + DB en docker): inserta 2 planes (`Starter` sort=2, `Gigabit` sort=1) → `listPlansByProvider` retorna `Gigabit(sort=1) | Starter(sort=2)` → toggle isActive=false confirmado → cleanup. Confirma orden, persistencia de `features` JSON, precios numeric round-trip y toggle.
+  - **Limitación**: la verificación visual de los dialogs (New/Edit/Reorder/Toggle) requiere sesión Clerk con `publicMetadata.role='admin'`. Mismo bloqueo que T08.
+- **Pendiente para próxima sesión**:
+  - T10 — CRUD Add-ons (gemela estructural de T09; el patrón `PlansSection` se traslada casi 1:1 a `AddOnsSection` dentro de un nuevo tab "Add-ons" en `/admin/providers/[id]`). Reusar Zod price schema y la convención del array vía textarea no aplica (add-ons no tienen features), pero sí el resto.
+  - Cuando llegue sesión Clerk, smoke E2E del flujo de planes en el dashboard. Anotar bugs en una entrada nueva.
+
 ## 2026-04-28 · T08 — CRUD Providers
 
 - **Estado final**: ✅ completada (verificación end-to-end de UI bloqueada por falta de sesión Clerk; verificación a nivel DB + build pasada).

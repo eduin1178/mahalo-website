@@ -127,7 +127,7 @@ Convenciones:
 - **Depende de**: T07
 
 ### T09 · CRUD Plans (por proveedor)
-- **Estado**: [ ]
+- **Estado**: [x]
 - **Objetivo**: Cada proveedor tiene planes gestionables.
 - **Acciones**:
   1. Actions en `lib/plans/actions.ts`: `listPlansByProvider`, `createPlan`, `updatePlan`, `togglePlanActive`, `reorderPlans`.

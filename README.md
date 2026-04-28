@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Mahalo Enterprise
 
-## Getting Started
+Internet plan reseller platform: public landing + 8-step checkout funnel + admin back-office.
 
-First, run the development server:
+Stack: Next.js 16 (App Router) · Tailwind v4 · shadcn/ui · PostgreSQL · Drizzle · Clerk · Resend · Docker.
+
+Documentación canónica en [`specs/`](specs/). Para implementar tareas usar la skill `/implement` (ver [`AGENTS.md`](AGENTS.md)).
+
+## Local development
+
+### Option A — Docker (recommended)
+
+Requires Docker Desktop.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env
+# fill in CLERK_*, RESEND_*, USPS_* if needed
+docker compose up --build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+App at <http://localhost:3000>, Postgres on `localhost:5432`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Volumes:
+- `pg_data` — Postgres data.
+- `uploads` — provider logos served from `/public/uploads`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Option B — Node directly
 
-## Learn More
+Requires Node 22+ and a running Postgres.
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+cp .env.example .env
+npm install
+npm run dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Useful scripts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Command | What it does |
+|---|---|
+| `npm run dev` | Next.js dev server (Turbopack). |
+| `npm run build` | Production build (Next standalone output). |
+| `npm run start` | Run the production server. |
+| `npm run lint` | ESLint. |
 
-## Deploy on Vercel
+## Project layout
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See [`specs/plan.md`](specs/plan.md) §3.

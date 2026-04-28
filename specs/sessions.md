@@ -29,6 +29,65 @@ Reglas:
 
 <!-- Las entradas se agregan debajo a partir de la primera sesión de implementación. -->
 
+## 2026-04-28 · T08 — CRUD Providers
+
+- **Estado final**: ✅ completada (verificación end-to-end de UI bloqueada por falta de sesión Clerk; verificación a nivel DB + build pasada).
+- **Archivos tocados**:
+  - `lib/providers/queries.ts` — `listProviders` (orden alfabético) y `getProviderById`.
+  - `lib/providers/actions.ts` — server actions `createProvider`, `updateProvider`, `toggleProviderActive`, `uploadProviderLogo` con Zod, `requireRole('admin')` y `revalidatePath`.
+  - `app/admin/(panel)/providers/page.tsx` — listado en shadcn Table con dialog "New provider".
+  - `app/admin/(panel)/providers/[id]/page.tsx` — detalle con secciones Logo + Details; usa `params: Promise<...>` (Next 16 async).
+  - `components/admin/providers/new-provider-dialog.tsx` — dialog client; tras crear redirige al detalle.
+  - `components/admin/providers/provider-edit-form.tsx` — form de edición con feedback inline.
+  - `components/admin/providers/provider-active-toggle.tsx` — botón toggle Active/Inactive.
+  - `components/admin/providers/provider-logo-form.tsx` — upload con validación cliente y server.
+  - `.gitignore` — agrega `/public/uploads/` (logos generados en runtime no versionados).
+- **Decisiones clave**:
+  - Logos a `public/uploads/providers/{id}.{ext}` (filesystem, no DB blob): consistente con el plan §3 (`public/uploads/`) y el volumen `uploads` de `docker-compose.yml`. La columna `logoUrl` guarda el path relativo `/uploads/providers/{id}.{ext}?v={timestamp}` — el query string fuerza refresco visual tras reemplazo (Next 16 sube `minimumCacheTTL` de imágenes a 4h, ver `notes-next16.md` §7). Como aquí usamos `<img>` plano (no `next/image`), el query string es suficiente.
+  - Si el `ext` cambia (ej. de `png` a `svg`), se borra el archivo viejo (filename distinto). Si el `ext` es el mismo, `writeFile` sobrescribe — no requiere unlink.
+  - Validación de tipo MIME por mapa whitelist (`png/jpeg/webp/svg`); el `ext` se deriva del MIME, no del nombre del archivo (defensa contra ext spoof).
+  - **No se usa `react-hook-form`** en estos formularios. Validación principal en server (Zod) + validación HTML nativa (`required`, `pattern`, `accept`, `maxLength`). Es coherente con `plan.md` §11 ("RHF solo en formularios complejos") — los formularios de provider son simples (3 campos + file).
+  - `Button` de `base-ui/react` no soporta `asChild` estilo Radix; uso `buttonVariants(...)` en `<Link>` para los enlaces "Edit" (mismo patrón que el sidebar de T07). Para `DialogTrigger` se usa el render-prop `render={<Button …/>}` del registry `base-nova` (ver T07 gotcha).
+  - `revalidatePath` (no `updateTag`): la guía de Next 16 (`notes-next16.md` §3) recomienda `updateTag`, pero requiere migrar las queries a `cacheTag`. Como las páginas usan `dynamic = "force-dynamic"`, `revalidatePath` basta hoy. Migrar a tags cuando cacheemos las queries (probablemente en hardening / T37).
+- **Gotchas / aprendizajes**:
+  - Server actions con `File` viajan por FormData multipart; `formData.get('logo')` retorna `File`. `Buffer.from(await file.arrayBuffer())` es la forma compatible con `node:fs/promises.writeFile`. Funciona en runtime nodejs (Next 16 default).
+  - El `requireRole('admin')` ya redirige a `/admin` si el rol es `agent`. Consistente con la regla "agent no ve gestión".
+  - La carpeta `public/uploads/providers/` se crea bajo demanda en el primer upload (`mkdir recursive`). Si no existe el dir, los logos viejos en DB apuntan a 404 — esperado, no se persiste nada hasta el primer upload.
+- **Verificación realizada**:
+  - `npm run build` → ✓ Compiled successfully (4.0s); rutas `/admin/providers` y `/admin/providers/[id]` listadas como ƒ. TypeScript ok.
+  - `docker compose up -d db` + `npm run db:migrate` + `npm run db:seed` → 8 providers en DB.
+  - Smoke test `tsx -e` → `listProviders()` retorna 8 filas ordenadas alfabéticamente (AT&T, Brightspeed, …, Verizon Fios). Confirma que el query feeding de la UI funciona.
+  - **Limitación**: la verificación visual del flujo CRUD completo (crear vía dialog, editar, toggle, upload) requiere sesión Clerk con `publicMetadata.role = 'admin'` — bloqueo conocido (T06/T07). El stack está completo a nivel código y DB.
+- **Pendiente para próxima sesión**:
+  - T09 — CRUD Plans por proveedor; reusar el patrón de actions y forms client de esta tarea. La UI vivirá dentro de `/admin/providers/[id]` como tab "Plans" (shadcn `Tabs`).
+  - Cuando el cliente provea sesión Clerk, ejecutar el smoke E2E manual: crear → upload logo → editar → desactivar → reactivar. Anotar bugs en una entrada nueva si aparecen.
+
+## 2026-04-28 · T07 — Layout admin con sidebar y guard de rol
+
+- **Estado final**: ✅ completada
+- **Archivos tocados**:
+  - `app/admin/(panel)/layout.tsx` — shell con sidebar fijo desktop + header con `<UserButton />`; aplica `auth.protect()` y resuelve nav por rol.
+  - `app/admin/(panel)/page.tsx` — home admin movida al route group del panel, simplificada (header lo provee el layout).
+  - `app/admin/page.tsx` — eliminado (reemplazado por el del route group).
+  - `components/admin/nav-config.ts` — items de navegación (icono lucide + flag `adminOnly`) y helper `visibleNavFor(role)`.
+  - `components/admin/sidebar-nav.tsx` — client; pinta links con estado activo vía `usePathname` (matchea exact + prefijo `/x/`).
+  - `components/admin/mobile-sidebar.tsx` — wrapper de `<Sheet>` con trigger hamburguesa visible solo `<md`.
+- **Decisiones clave**:
+  - **Route group `(panel)`** para que el layout solo envuelva las páginas autenticadas. Sin esto, `/admin/sign-in` heredaba el layout y disparaba `auth.protect()` antes de mostrar el formulario, generando loop. El sign-in se queda en `app/admin/sign-in/[[...sign-in]]/` por fuera del grupo.
+  - Visibilidad por rol resuelta en server (layout llama `getCurrentRole()` y pasa items ya filtrados al sidebar). Evita pintar links que el cliente luego oculta. Items "gestión" (`adminOnly: true`): Providers, Plans, Add-ons, Coverage, Settings. `agent` ve solo Orders + Customers. Si no hay rol, lista vacía.
+  - Sidebar usa `bg-mahalo-navy-900` para el item activo (sólido, no gradiente — el design system prohíbe gradiente en admin §16).
+  - Active state matchea `pathname === href || startsWith(href + "/")` para que rutas hijas (futuras `/admin/providers/[id]`) marquen el padre.
+- **Gotchas / aprendizajes**:
+  - El `<Sheet>` de `base-nova` usa `@base-ui/react`; `SheetTrigger` acepta el patrón `render={<Button … />}` (igual que en `sheet.tsx`). No se debe envolver con `asChild` estilo Radix.
+  - `Logo` no tiene prop `alt`; pasa `Image` con alt fijo. Cambiar tamaño con `width`/`height` (height=36 en sheet header da una altura proporcional).
+  - El layout queda como server component pese a importar componentes client (`SidebarNav`, `MobileSidebar`) — cruzar la boundary funciona porque solo se pasan items ya serializables (sin el `LucideIcon` componente). Cuidado: el icono se pasa como referencia de componente y atraviesa la barrera, lo cual Next permite porque al final SidebarNav es client y reconstruye allí. Verificado en build.
+- **Verificación realizada**:
+  - `npm run build` → ✓ Compiled successfully (4.4s), TypeScript ok. Rutas: `/admin` y `/admin/sign-in/[[...sign-in]]` listadas como ƒ (dynamic). Sin warnings nuevos.
+  - Estructura de rutas confirmada: `/admin` resuelve a `(panel)/page.tsx` con el shell; `/admin/sign-in` queda fuera del grupo (sin shell). **Criterio de aceptación cumplido**: el filtrado por rol en `visibleNavFor` garantiza que `agent` no vea enlaces de gestión, `admin` ve todos.
+- **Pendiente para próxima sesión**:
+  - T08 — CRUD Providers. La home del admin (`(panel)/page.tsx`) sirve como placeholder; al implementar T08, agregar también un dashboard con KPIs si el cliente lo pide (no está en spec).
+  - Validación visual con sesión real Clerk requiere asignar `publicMetadata.role` desde el dashboard (mismo bloqueo señalado en T06).
+
 ## 2026-04-27 · T06 — Integrar Clerk y proteger /admin
 
 - **Estado final**: ✅ completada

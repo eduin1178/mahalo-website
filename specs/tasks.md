@@ -101,7 +101,7 @@ Convenciones:
 - **Bloqueada por cliente**: Clerk app + claves (placeholder permite trabajar local).
 
 ### T07 · Layout admin con sidebar y guard de rol
-- **Estado**: [ ]
+- **Estado**: [x]
 - **Objetivo**: Estructura común para todas las páginas admin.
 - **Acciones**:
   1. `app/admin/layout.tsx` con sidebar (shadcn `Sheet` en mobile, fijo en desktop) con links: Providers, Plans, Add-ons, Coverage, Orders, Customers, Settings.
@@ -113,7 +113,7 @@ Convenciones:
 - **Depende de**: T06
 
 ### T08 · CRUD Providers
-- **Estado**: [ ]
+- **Estado**: [x]
 - **Objetivo**: Admin gestiona proveedores.
 - **Acciones**:
   1. Server actions en `lib/providers/actions.ts`: `listProviders`, `createProvider`, `updateProvider`, `toggleProviderActive`.

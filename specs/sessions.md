@@ -2,6 +2,27 @@
 
 Bitácora cronológica de sesiones de implementación. Cada entrada se anexa al cierre de una sesión por la skill `/implement` (ver `.claude/skills/implement/SKILL.md`).
 
+## 2026-04-29 · T30 — Paso 8: Confirmation + commit
+
+- **Estado final**: ✅ completada
+- **Archivos tocados**:
+  - `lib/orders/draft-actions.ts` — `submitOrder()` valida campos requeridos del draft (customer/provider/plan/zip/address/scheduledAt + paymentData si autopay), transición `Draft → Pending` en transacción con inserción en `order_status_history` (changedBy=null, notes="Submitted by customer"), borra cookie `mahalo_order_id`, dispara `sendNewOrderEmail` y `triggerWebhook` con `Promise.allSettled` y loguea fallos sin abortar.
+  - `app/(public)/checkout/confirmation/page.tsx` — server component; lee orderId del cookie, si la orden está en `Draft` invoca `submitOrder` y muestra error inline si falla; renderiza mensaje del PDF (agente verificará SSN/DOB) + referencia corta del id.
+- **Decisiones clave**:
+  - **`submitOrder` sin parámetros, lee del cookie**: el orderId vive en la cookie firmada (T23); pasarlo desde la página solo agregaría una serialización redundante. Si el cookie no está/no es Draft, retorna error o la página redirige.
+  - **`Promise.allSettled` ya en T30 (no en T34)**: el spec de T30 exige disparar email + webhook y T34 es la versión "hardened". Implementarlo dos veces sería churn; T34 quedará como verificación E2E con webhook dummy.
+  - **Notas y changedBy en history**: `changedBy=null` porque el cliente no es un Clerk user; `notes="Submitted by customer"` deja rastro distinguible de los cambios manuales del agente desde `/admin/orders`.
+  - **Refresh post-submit redirige a `/`**: cookie ya borrada, no hay forma de re-renderizar la confirmación. Aceptable: el usuario ya leyó el mensaje y recibirá email.
+- **Gotchas / aprendizajes**:
+  - Orden de operaciones en `submitOrder`: transacción DB → borrar cookie → notificaciones. Si borráramos cookie antes de la transacción y la transacción fallara, el draft quedaría huérfano sin sesión recuperable. Si notificáramos antes de borrar cookie, un refresh durante el await del email re-dispararía submit (la primera transacción ya transicionó a Pending así que el guard `current.status === "Draft"` lo bloquea, pero borrar el cookie antes deja un estado más limpio).
+  - `submitOrder` está en un archivo `"use server"` (es server action) pero también se invoca desde un server component — Next lo soporta sin warnings.
+- **Pendiente para próxima sesión**:
+  - **T31 — Validación E2E del embudo**: QA manual de los 8 pasos en mobile/desktop con ZIP cubierto y sin cobertura, branding por proveedor, documentar bugs en `specs/qa-checkout.md`.
+  - **T34** queda mayormente cubierto por T30; pendiente solo verificación con webhook dummy real (`webhook.site`).
+- **Verificación realizada**:
+  - `npm run build` → ✓ Compiled successfully (10.2s); ruta `ƒ /checkout/confirmation` listada como dynamic.
+  - Lógica revisada: orden incompleta retorna error sin transicionar; cookie se borra solo tras commit; fallos de email/webhook quedan en logs y no abortan submit.
+
 ## 2026-04-28 · T33 — Webhook a n8n
 
 - **Estado final**: ✅ completada

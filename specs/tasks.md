@@ -387,7 +387,7 @@ Convenciones:
 - **Depende de**: T28
 
 ### T30 · Paso 8 — Confirmation + commit
-- **Estado**: [ ]
+- **Estado**: [x]
 - **Objetivo**: Cerrar el flujo.
 - **Acciones**:
   1. Action `submitOrder(orderId)` que: valida que todos los campos requeridos estén → cambia status a `Pending` → inserta `order_status_history` → llama `sendNewOrderEmail` (T32) y `triggerWebhook` (T33).

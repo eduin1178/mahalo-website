@@ -11,12 +11,15 @@ import { getDb } from "@/lib/db/client";
 import {
   addOns,
   customers,
+  orderStatusHistory,
   orders,
   phoneTypeValues,
   plans,
   type AddressJson,
 } from "@/lib/db/schema";
+import { sendNewOrderEmail } from "@/lib/resend/send";
 import { validateAddress } from "@/lib/usps/client";
+import { triggerWebhook } from "@/lib/webhook/trigger";
 
 import {
   DRAFT_COOKIE_MAX_AGE_SEC,
@@ -459,4 +462,62 @@ export async function scheduleInstallation(
     .where(eq(orders.id, draft.id));
 
   redirect("/checkout/confirmation");
+}
+
+export type SubmitOrderResult =
+  | { ok: true; orderId: string }
+  | { ok: false; error: string };
+
+export async function submitOrder(): Promise<SubmitOrderResult> {
+  const draft = await getCurrentDraft();
+  if (!draft) {
+    return { ok: false, error: "Your session has expired. Start over." };
+  }
+  if (
+    !draft.customerId ||
+    !draft.providerId ||
+    !draft.planId ||
+    !draft.zipCode ||
+    !draft.installationAddress ||
+    !draft.scheduledAt
+  ) {
+    return { ok: false, error: "Order is incomplete." };
+  }
+  if (draft.autopayEnabled && !draft.paymentData) {
+    return { ok: false, error: "Payment details are missing." };
+  }
+
+  const db = getDb();
+  await db.transaction(async (tx) => {
+    await tx
+      .update(orders)
+      .set({ status: "Pending", updatedAt: new Date() })
+      .where(eq(orders.id, draft.id));
+    await tx.insert(orderStatusHistory).values({
+      orderId: draft.id,
+      status: "Pending",
+      changedBy: null,
+      notes: "Submitted by customer",
+    });
+  });
+
+  const store = await cookies();
+  store.delete(DRAFT_COOKIE_NAME);
+
+  const [emailRes, webhookRes] = await Promise.allSettled([
+    sendNewOrderEmail(draft.id),
+    triggerWebhook(draft.id),
+  ]);
+  if (emailRes.status === "rejected") {
+    console.error(`[submitOrder] email rejected for ${draft.id}`, emailRes.reason);
+  } else if (!emailRes.value.ok) {
+    console.error(`[submitOrder] email failed for ${draft.id}: ${emailRes.value.error}`);
+  }
+  if (webhookRes.status === "rejected") {
+    console.error(`[submitOrder] webhook rejected for ${draft.id}`, webhookRes.reason);
+  } else if (!webhookRes.value.ok) {
+    console.error(`[submitOrder] webhook failed for ${draft.id}: ${webhookRes.value.error}`);
+  }
+
+  return { ok: true, orderId: draft.id };
 }

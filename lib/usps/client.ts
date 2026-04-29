@@ -32,6 +32,8 @@ export type ValidateAddressResult = ValidateAddressOk | ValidateAddressError;
 
 const TTL_MS = 60_000;
 const REQUEST_TIMEOUT_MS = 5_000;
+const DEFAULT_BASE = "https://apis.usps.com";
+const TOKEN_REFRESH_MARGIN_MS = 60_000;
 
 type CacheEntry = { value: ValidateAddressResult; expiresAt: number };
 const cache = new Map<string, CacheEntry>();
@@ -54,8 +56,14 @@ function cacheSet(key: string, value: ValidateAddressResult): void {
   }
 }
 
+function getBaseUrl(): string {
+  return (process.env.USPS_API_BASE || DEFAULT_BASE).replace(/\/$/, "");
+}
+
 function hasRealCredentials(): boolean {
-  return Boolean(process.env.USPS_USER_ID && process.env.USPS_API_BASE);
+  return Boolean(
+    process.env.USPS_CONSUMER_KEY && process.env.USPS_CONSUMER_SECRET,
+  );
 }
 
 export async function validateAddress(
@@ -83,12 +91,12 @@ export async function validateAddress(
     result =
       classified.kind === "zip"
         ? await lookupZipReal(classified.zip)
-        : await verifyAddressReal(classified.address, classified.extractedZip);
+        : await verifyAddressReal(classified);
   } else {
     result =
       classified.kind === "zip"
         ? mockLookupZip(classified.zip)
-        : mockVerifyAddress(classified.address, classified.extractedZip);
+        : mockVerifyAddress(classified.streetAddress, classified.zip);
   }
 
   cacheSet(key, result);
@@ -126,99 +134,104 @@ function mockVerifyAddress(
   };
 }
 
-async function lookupZipReal(zip: string): Promise<ValidateAddressResult> {
-  const userId = process.env.USPS_USER_ID!;
-  const base = process.env.USPS_API_BASE!.replace(/\/$/, "");
-  const xml = `<CityStateLookupRequest USERID="${escapeXml(userId)}"><ZipCode ID="0"><Zip5>${zip}</Zip5></ZipCode></CityStateLookupRequest>`;
-  const url = `${base}?API=CityStateLookup&XML=${encodeURIComponent(xml)}`;
+type CachedToken = { token: string; expiresAt: number };
+let tokenCache: CachedToken | null = null;
+let tokenInflight: Promise<string | ValidateAddressError> | null = null;
 
-  const upstream = await fetchXml(url);
-  if (!upstream.ok) return upstream;
-
-  const body = upstream.body;
-  if (/<Error>/i.test(body)) {
-    return {
-      ok: false,
-      error: {
-        code: "not_found",
-        message: extractTag(body, "Description") ?? "ZIP code not found.",
-      },
-    };
+async function getAccessToken(): Promise<string | ValidateAddressError> {
+  const now = Date.now();
+  if (tokenCache && tokenCache.expiresAt - TOKEN_REFRESH_MARGIN_MS > now) {
+    return tokenCache.token;
   }
+  if (tokenInflight) return tokenInflight;
 
-  const city = extractTag(body, "City");
-  const state = extractTag(body, "State");
-  if (!city || !state) {
-    return {
-      ok: false,
-      error: { code: "upstream", message: "Unexpected USPS response." },
-    };
-  }
+  tokenInflight = (async (): Promise<string | ValidateAddressError> => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      const body = new URLSearchParams({
+        grant_type: "client_credentials",
+        client_id: process.env.USPS_CONSUMER_KEY!,
+        client_secret: process.env.USPS_CONSUMER_SECRET!,
+      });
+      const res = await fetch(`${getBaseUrl()}/oauth2/v3/token`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          accept: "application/json",
+        },
+        body,
+        signal: controller.signal,
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        return {
+          ok: false,
+          error: {
+            code: res.status === 429 ? "rate_limited" : "upstream",
+            message: `USPS auth failed (HTTP ${res.status}).`,
+          },
+        };
+      }
+      const json = (await res.json()) as {
+        access_token?: string;
+        expires_in?: number;
+      };
+      if (!json.access_token) {
+        return {
+          ok: false,
+          error: { code: "upstream", message: "USPS auth returned no token." },
+        };
+      }
+      const ttlMs = (json.expires_in ?? 28800) * 1000;
+      tokenCache = { token: json.access_token, expiresAt: Date.now() + ttlMs };
+      return json.access_token;
+    } catch (err) {
+      const aborted = err instanceof Error && err.name === "AbortError";
+      return {
+        ok: false,
+        error: {
+          code: "upstream",
+          message: aborted ? "USPS auth timed out." : "USPS auth request failed.",
+        },
+      };
+    } finally {
+      clearTimeout(timer);
+      tokenInflight = null;
+    }
+  })();
 
-  return {
-    ok: true,
-    zip,
-    normalized: { city, state, zip },
-    source: "usps",
-  };
+  return tokenInflight;
 }
 
-async function verifyAddressReal(
-  address: string,
-  extractedZip: string | null,
-): Promise<ValidateAddressResult> {
-  const userId = process.env.USPS_USER_ID!;
-  const base = process.env.USPS_API_BASE!.replace(/\/$/, "");
-  const xml = `<AddressValidateRequest USERID="${escapeXml(userId)}"><Revision>1</Revision><Address ID="0"><Address1></Address1><Address2>${escapeXml(address)}</Address2><City></City><State></State><Zip5>${extractedZip ?? ""}</Zip5><Zip4></Zip4></Address></AddressValidateRequest>`;
-  const url = `${base}?API=Verify&XML=${encodeURIComponent(xml)}`;
+async function authedFetchJson(
+  url: string,
+  attempt = 0,
+): Promise<{ ok: true; body: unknown } | ValidateAddressError> {
+  const tokenOrError = await getAccessToken();
+  if (typeof tokenOrError !== "string") return tokenOrError;
 
-  const upstream = await fetchXml(url);
-  if (!upstream.ok) return upstream;
-
-  const body = upstream.body;
-  if (/<Error>/i.test(body)) {
-    return {
-      ok: false,
-      error: {
-        code: "not_found",
-        message: extractTag(body, "Description") ?? "Address not found.",
-      },
-    };
-  }
-
-  const street = extractTag(body, "Address2") ?? address;
-  const city = extractTag(body, "City");
-  const state = extractTag(body, "State");
-  const zip5 = extractTag(body, "Zip5");
-  if (!zip5) {
-    return {
-      ok: false,
-      error: { code: "upstream", message: "USPS did not return a ZIP." },
-    };
-  }
-
-  return {
-    ok: true,
-    zip: zip5,
-    normalized: {
-      street,
-      city: city ?? undefined,
-      state: state ?? undefined,
-      zip: zip5,
-    },
-    source: "usps",
-  };
-}
-
-type FetchXmlResult =
-  | { ok: true; body: string }
-  | ValidateAddressError;
-
-async function fetchXml(url: string): Promise<FetchXmlResult> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    const res = await fetch(url, { signal: controller.signal, cache: "no-store" });
+    const res = await fetch(url, {
+      headers: {
+        authorization: `Bearer ${tokenOrError}`,
+        accept: "application/json",
+      },
+      signal: controller.signal,
+      cache: "no-store",
+    });
+    if (res.status === 401 && attempt === 0) {
+      tokenCache = null;
+      return authedFetchJson(url, attempt + 1);
+    }
+    if (res.status === 404) {
+      return {
+        ok: false,
+        error: { code: "not_found", message: "Address not found." },
+      };
+    }
     if (!res.ok) {
       return {
         ok: false,
@@ -228,7 +241,7 @@ async function fetchXml(url: string): Promise<FetchXmlResult> {
         },
       };
     }
-    return { ok: true, body: await res.text() };
+    return { ok: true, body: await res.json() };
   } catch (err) {
     const aborted = err instanceof Error && err.name === "AbortError";
     return {
@@ -243,27 +256,85 @@ async function fetchXml(url: string): Promise<FetchXmlResult> {
   }
 }
 
-function extractTag(xml: string, tag: string): string | null {
-  const match = xml.match(new RegExp(`<${tag}>([^<]*)</${tag}>`, "i"));
-  return match ? decodeXml(match[1]).trim() || null : null;
+async function lookupZipReal(zip: string): Promise<ValidateAddressResult> {
+  const url = `${getBaseUrl()}/addresses/v3/city-state?ZIPCode=${encodeURIComponent(zip)}`;
+  const result = await authedFetchJson(url);
+  if (!result.ok) return result;
+
+  const body = result.body as { city?: string; state?: string; ZIPCode?: string };
+  const city = body.city?.trim();
+  const state = body.state?.trim();
+  if (!city || !state) {
+    return {
+      ok: false,
+      error: { code: "not_found", message: "ZIP code not found." },
+    };
+  }
+  return {
+    ok: true,
+    zip,
+    normalized: { city, state, zip },
+    source: "usps",
+  };
 }
 
-function escapeXml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
+async function verifyAddressReal(classified: {
+  streetAddress: string;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+}): Promise<ValidateAddressResult> {
+  if (!classified.state && !classified.zip) {
+    return {
+      ok: false,
+      error: {
+        code: "not_found",
+        message:
+          "Include a state or 5-digit ZIP so we can verify the address.",
+      },
+    };
+  }
+  const params = new URLSearchParams({ streetAddress: classified.streetAddress });
+  if (classified.city) params.set("city", classified.city);
+  if (classified.state) params.set("state", classified.state);
+  if (classified.zip) params.set("ZIPCode", classified.zip);
+  const url = `${getBaseUrl()}/addresses/v3/address?${params.toString()}`;
+  const result = await authedFetchJson(url);
+  if (!result.ok) return result;
+
+  const body = result.body as {
+    address?: {
+      streetAddress?: string;
+      city?: string;
+      state?: string;
+      ZIPCode?: string;
+    };
+  };
+  const addr = body.address;
+  const zip5 = addr?.ZIPCode?.trim();
+  if (!zip5) {
+    return {
+      ok: false,
+      error: { code: "upstream", message: "USPS did not return a ZIP." },
+    };
+  }
+  return {
+    ok: true,
+    zip: zip5,
+    normalized: {
+      street: addr?.streetAddress?.trim() || classified.streetAddress,
+      city: addr?.city?.trim() || undefined,
+      state: addr?.state?.trim() || undefined,
+      zip: zip5,
+    },
+    source: "usps",
+  };
 }
 
-function decodeXml(value: string): string {
-  return value
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'");
-}
-
-export const __testing = { cache };
+export const __testing = {
+  cache,
+  resetTokenCache: () => {
+    tokenCache = null;
+    tokenInflight = null;
+  },
+};

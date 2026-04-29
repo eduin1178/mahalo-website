@@ -21,6 +21,14 @@ const addressFieldsSchema = z.object({
   zip: z.string().trim().regex(/^\d{5}$/u, "Enter a 5-digit ZIP"),
 });
 
+const billingAddressLooseSchema = z.object({
+  line1: z.string().max(200).optional().or(z.literal("")),
+  line2: z.string().max(200).optional().or(z.literal("")),
+  city: z.string().max(100).optional().or(z.literal("")),
+  state: z.string().max(40).optional().or(z.literal("")),
+  zip: z.string().max(10).optional().or(z.literal("")),
+});
+
 const formSchema = z
   .object({
     firstName: z.string().trim().min(1, "Required").max(80),
@@ -35,7 +43,7 @@ const formSchema = z
     phoneType: z.enum(phoneTypeValues),
     installationAddress: addressFieldsSchema,
     useDifferentBilling: z.boolean(),
-    billingAddress: addressFieldsSchema.partial(),
+    billingAddress: billingAddressLooseSchema,
   })
   .superRefine((v, ctx) => {
     if (v.useDifferentBilling) {

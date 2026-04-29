@@ -27,7 +27,9 @@
       "Bash(git mv *)",
       "Bash(echo \"pid=$!\")",
       "Bash(npx tsx *)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(node -e \"const {z}=require\\('zod'\\); console.log\\(z.string\\(\\).email\\(\\).safeParse\\('test@test.com'\\)\\)\")",
+      "Bash(node -e ' *)"
     ]
   }
 }

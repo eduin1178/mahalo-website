@@ -501,8 +501,13 @@ export async function submitOrder(): Promise<SubmitOrderResult> {
     });
   });
 
-  const store = await cookies();
-  store.delete(DRAFT_COOKIE_NAME);
+  try {
+    const store = await cookies();
+    store.delete(DRAFT_COOKIE_NAME);
+  } catch {
+    // Server Components can't mutate cookies; the status guard above already
+    // prevents re-submission, so leaving the cookie until natural expiry is safe.
+  }
 
   const [emailRes, webhookRes] = await Promise.allSettled([
     sendNewOrderEmail(draft.id),

@@ -307,7 +307,7 @@ Convenciones:
 ## Fase 3 — Embudo de compra
 
 ### T23 · Estado del embudo + draft order
-- **Estado**: [ ]
+- **Estado**: [x]
 - **Objetivo**: Persistencia entre pasos.
 - **Acciones**:
   1. Action `createDraftOrder({ zip, address })` que crea fila `orders` con status `Draft` y retorna `orderId`.
@@ -319,7 +319,7 @@ Convenciones:
 - **Depende de**: T20
 
 ### T24 · Paso 2 — Provider & Plan
-- **Estado**: [ ]
+- **Estado**: [x]
 - **Objetivo**: Cliente elige plan.
 - **Acciones**:
   1. Página `checkout/plan` que llama `getAvailableProviders(draft.zip)`.
@@ -331,7 +331,7 @@ Convenciones:
 - **Depende de**: T23
 
 ### T25 · Paso 3 — Add-ons
-- **Estado**: [ ]
+- **Estado**: [x]
 - **Objetivo**: Selección opcional.
 - **Acciones**:
   1. Página `checkout/add-ons` (skip automático si `providerHasActiveAddOns` es false).

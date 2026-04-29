@@ -2,6 +2,86 @@
 
 Bitácora cronológica de sesiones de implementación. Cada entrada se anexa al cierre de una sesión por la skill `/implement` (ver `.claude/skills/implement/SKILL.md`).
 
+## 2026-04-28 · T25 — Paso 3: Add-ons
+
+- **Estado final**: ✅ completada (build verde; smoke visual pendiente de `npm run dev`).
+- **Archivos tocados**:
+  - `lib/orders/draft-actions.ts` — agrega `selectAddOns({ addOnIds })`. Dedup, valida via `inArray + providerId + isActive` que cada id pertenezca al proveedor del draft y siga activo. Persiste en `orders.addOnIds` y `redirect('/checkout/summary')`. Lista vacía = skip válido.
+  - `components/checkout/add-ons-form.tsx` — client; checkbox list controlado con `Set<string>`, label envuelve el input para área de click amplia. Botones "Skip" (envía `[]`) y "Continue" (envía Set) ambos disparan `selectAddOns` vía `useTransition`. Card del addon checked recibe `borderColor + boxShadow` con `provider.primaryColor`.
+  - `app/(public)/checkout/add-ons/page.tsx` — server, `force-dynamic`. Lee draft, redirect a `/` si no hay draft, a `/checkout/plan` si no hay providerId/planId. Filtra `listAddOnsByProvider` por `isActive`; si lista vacía, **redirect a `/checkout/summary`** (skip automático del task). Pasa `provider.primaryColor` y `draft.addOnIds` (preselección al volver atrás) al form.
+- **Decisiones clave**:
+  - **Skip automático server-side** (redirect en page) en vez de chequear con `providerHasActiveAddOns` y luego volver a fetchar la lista: una sola query `listAddOnsByProvider + filter` cubre ambos casos. Si la lista es `[]`, redirect; si no, render. Evita la doble query del helper.
+  - **Re-validación server-side de pertenencia + isActive** dentro de `selectAddOns`: el cliente puede haber dejado abierta la página mientras el admin desactivó un add-on, o haber hecho POST directo con un id ajeno. Equivalente al patrón de `selectPlan` (T24).
+  - **Preselección desde `draft.addOnIds`**: si el usuario navega "atrás" desde summary, mantiene su selección. T24 resetea `addOnIds` al cambiar de plan, así que esta preselección solo refleja el plan/proveedor actual.
+  - **Skip envía `[]` (no shortcut path)**: Skip y Continue son la misma action con distintos payloads, así un usuario que tenía add-ons preseleccionados y luego clickea Skip explícitamente vacía la selección. Coherente con el copy "Skip" del PDF.
+  - **`Set<string>` en estado** vs array: toggle O(1), evita duplicados naturalmente; convertimos a array solo en submit.
+- **Gotchas / aprendizajes**:
+  - **`getDb()` solo se llama cuando hace falta**: si `ids.length === 0` (skip), saltamos la validación y vamos directo al update. Pero el `db` se necesita igual para el update, así que se instancia una sola vez al inicio del bloque post-skip-check.
+  - **`accent-mahalo-blue-600`** en el checkbox nativo respeta el color de marca sin necesidad de un Checkbox shadcn (no se instaló en T03 por no estar listado). Suficiente para este step.
+  - **`boxShadow: 0 0 0 1px ${primaryColor}`** sobre el `<label>` simula un borde de 2px sin layout shift cuando se marca el checkbox (el border ya ocupa 1px). Efecto visual de "doble borde" sutil, branded por proveedor.
+- **Verificación realizada**:
+  - `npm run build` → ✓ Compiled successfully; `/checkout/add-ons` listada como ƒ. TypeScript ok.
+  - **Limitación**: el flujo end-to-end (plan → add-ons → summary | skip → summary) requiere `npm run dev` con seed que tenga add-ons activos para el provider. T31 hará QA visual completo.
+- **Pendiente para próxima sesión**:
+  - **T26 — Order Summary**. Página `/checkout/summary` con plan, add-ons, total = `priceStandard + Σ(addOn.price)`. Helper `calculateTotal(order, autopay = false)` reutilizable en T26 y T28.
+
+## 2026-04-28 · T24 — Paso 2: Provider & Plan
+
+- **Estado final**: ✅ completada (build verde; smoke visual pendiente de `npm run dev`).
+- **Archivos tocados**:
+  - `lib/orders/draft-actions.ts` — agrega `selectPlan({ planId })`. Lee draft cookie, valida que el plan esté `isActive` y que su `providerId` figure en `findProvidersByZip(draft.zipCode)`. Persiste `providerId/planId`, resetea `addOnIds: []`, y `redirect()` a `/checkout/add-ons` o `/checkout/summary` según `providerHasActiveAddOns`.
+  - `components/checkout/plan-card.tsx` — client; card con `borderTopColor` = `provider.primaryColor`, logo via `next/image`, precio standard + nota autopay, lista de features con bullets coloreados con el primaryColor, botón `variant="primary"` dispara `selectPlan` vía `useTransition`. Errores no-redirect renderizados inline (`role="alert"`).
+  - `app/(public)/checkout/plan/page.tsx` — reemplaza el placeholder de T23. Carga `getCurrentDraft()`, llama `getAvailableProviders(draft.zipCode)`, y agrupa por proveedor (variante "agrupado" del task). Empty state branded para `providers === []` y para error de validación, ambos con CTA "Back to home".
+- **Decisiones clave**:
+  - **Agrupado por proveedor** (variante explícita del task): cada bloque tiene un dot del primaryColor + nombre, y debajo el grid de plan cards. Más legible que un grid plano cuando un ZIP cubre 4+ proveedores con 3+ planes cada uno.
+  - **Validación server-side de cobertura dentro de `selectPlan`**: el plan podría haberse desactivado o el provider haber perdido cobertura entre el render y el click. Re-validar evita persistir un draft inconsistente y cierra el vector de POST directo a la action con un `planId` arbitrario.
+  - **Reset de `addOnIds: []`** en cada `selectPlan`: si el usuario navega "atrás" y cambia de plan/proveedor, los add-ons del proveedor anterior dejarían de pertenecer. Más simple resetear que validar la pertenencia ulterior; el usuario reelige en el paso 3.
+  - **`redirect()` dentro de la action en lugar de retornar el path**: el redirect se ejecuta desde el cliente vía `useTransition` y es transparente. La función retorna `SelectPlanResult` solo en el path de error (TS-friendly: `redirect()` es `never`). El cliente solo trata `result?.ok === false`.
+  - **`force-dynamic`** en la page: depende de la cookie `mahalo_order_id` y de queries DB recientes (planes activos pueden cambiar mientras el usuario navega). Sin esto, Next podría intentar prerenderizar.
+  - **Variante `primary` (gradient)** en el botón "Select Plan" en lugar del color del proveedor: §3 design-system reserva el gradient para CTAs principales del embudo. Aplicar el color del proveedor al botón mezclaría dos lenguajes. El primaryColor vive en el border-top y los bullets — branding sutil sin canibalizar el CTA.
+- **Gotchas / aprendizajes**:
+  - **`redirect()` en server action no rompe el `Promise<Result>` typing**: `redirect()` retorna `never`, así que el path `await db.update(...) → redirect(...)` no necesita un `return`. El cliente recibe `undefined` desde la perspectiva del runtime (la action nunca resuelve normalmente en el éxito), por eso el cliente chequea `if (result && !result.ok)`.
+  - **`Plan.features` es `jsonb` con `$type<string[]>` y default `[]`**, pero por defensa agregué `Array.isArray(plan.features)` en el render para tolerar registros legacy con `null`/objeto inesperado.
+  - **`Number(plan.priceStandard).toFixed(2)`** mantiene el patrón establecido en `components/admin/plans/plans-section.tsx` (numeric en pg llega como string en Drizzle). Cuando llegue T26 con `calculateTotal`, ese helper centralizará la conversión.
+  - **`borderTopColor` + `borderTopWidth: 4` inline-style** ya es un patrón establecido por T18 (`providers-grid.tsx`); reutilizar el mismo evita una clase Tailwind dinámica imposible.
+- **Verificación realizada**:
+  - `npm run build` → ✓ Compiled successfully (6.8s); `/checkout/plan` listada como ƒ. TypeScript ok.
+  - **Limitación**: el flujo end-to-end (hero → /checkout → plan → submit → /checkout/add-ons o /checkout/summary) requiere `npm run dev` con un ZIP cubierto en seed. T31 hará QA visual completo.
+- **Pendiente para próxima sesión**:
+  - **T25 — Add-ons**. Página `/checkout/add-ons` con skip automático si `providerHasActiveAddOns(draft.providerId) === false`. Acción `selectAddOns(orderId, addOnIds[])`.
+  - Cuando exista el helper `calculateTotal` (T26), refactorizar la lógica inline del PlanCard si se decide mostrar también el "first month total" con add-ons (no requerido por el spec actual).
+
+## 2026-04-28 · T23 — Estado del embudo + draft order
+
+- **Estado final**: ✅ completada
+- **Archivos tocados**:
+  - `lib/orders/draft.ts` — server-only: cookie HMAC sign/verify, `readDraftOrderId`, `getCurrentDraft` (devuelve `Order` solo si status `Draft`).
+  - `lib/orders/draft-actions.ts` — `"use server"` con `createDraftOrder({ zip?, address? })` y `clearDraftCookie()`. Valida con USPS wrapper, inserta en `orders` con status `Draft`, persiste cookie firmada.
+  - `app/(public)/checkout/layout.tsx` — wrapper con `<CheckoutStepper />` y contenedor centrado.
+  - `app/(public)/checkout/page.tsx` — paso 1: lee `searchParams` (`zip` / `address`); si vacíos y existe draft → `/checkout/plan`, si no → `/`. Si hay input renderiza `<DraftBootstrap>`.
+  - `app/(public)/checkout/plan/page.tsx` — placeholder mínimo de paso 2 que lee `getCurrentDraft()` (será reemplazado por T24).
+  - `components/checkout/stepper.tsx` — client; `usePathname` para resolver paso activo.
+  - `components/checkout/draft-bootstrap.tsx` — client; dispara `createDraftOrder` en mount y hace `router.replace('/checkout/plan')`.
+  - `.env.example` — `DRAFT_COOKIE_SECRET` (con fallback a `CLERK_SECRET_KEY` y luego placeholder dev).
+- **Decisiones clave**:
+  - Separación en dos archivos `draft.ts` (server-only, lecturas) vs `draft-actions.ts` (`"use server"`, mutaciones). Evita exponer helpers de lectura como endpoints POST y mantiene a las acciones libres para setear cookies.
+  - Cookie firmada con HMAC-SHA256; payload es solo el UUID. UUID v4 ya es no-adivinable; la firma protege contra tampering. Token formato `${orderId}.${sigBase64Url}`.
+  - `getCurrentDraft` filtra por `status === 'Draft'` para que un orderId que ya pasó a `Pending` no permita re-uso de la cookie.
+  - Cookie con `httpOnly`, `sameSite=lax`, `secure` solo en prod, `maxAge=7d`, `path=/`.
+  - `createDraftOrder` reusa `validateAddress` de T19 (ya cubre USPS real / mock); tomar `zip` de su normalización para que la fila quede consistente.
+  - `installationAddress` se rellena solo si USPS retornó `street` (caso address path); para flujos con solo ZIP queda `null` y T27 lo completará.
+  - El stub de `/checkout/plan` permite verificar persistencia del draft sin invadir T24 (lo único que hace es leer `getCurrentDraft` y mostrar zip + id).
+  - Sin entrada en `order_status_history` en la creación del Draft — el primer registro lo hará `submitOrder` (T30) al pasar a `Pending`. La timeline del admin solo muestra eventos a partir de la salida de Draft.
+- **Gotchas / aprendizajes**:
+  - `await cookies()` ya es obligatorio en v16 (anotado en `notes-next16.md`). Cookies solo se pueden setear en server actions / route handlers — por eso el bootstrap del draft pasa por `<DraftBootstrap>` cliente que invoca la server action, no por el server component de `/checkout`.
+  - `as const` sobre el array de `STEPS` rompe TS porque al mutar `best` los literales son distintos. Solución: tipo `Step` explícito + `readonly Step[]`.
+  - El cookie `secure: true` no se setea en dev (HTTP) para que el flujo funcione local; en producción Next ya corre detrás de HTTPS.
+- **Pendiente para próxima sesión**:
+  - T24 reemplaza `/checkout/plan/page.tsx` placeholder con la UI real (cards branded, `selectPlan` action).
+  - Verificación manual en navegador queda pendiente para el usuario (no es ejecutable headless desde aquí); el build pasa y la lógica es directa.
+- **Verificación realizada**:
+  - `npm run build` → ✓ Compiled successfully (6.8s) + TypeScript ok. Rutas `/checkout` y `/checkout/plan` listadas como dynamic (ƒ).
+
 ## 2026-04-28 · T21 — Páginas legales
 
 - **Estado final**: ✅ completada

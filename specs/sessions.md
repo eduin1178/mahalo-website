@@ -29,6 +29,133 @@ Reglas:
 
 <!-- Las entradas se agregan debajo a partir de la primera sesión de implementación. -->
 
+## 2026-04-28 · T19 — Wrapper USPS API
+
+- **Estado final**: ✅ completada (mock mode; real USPS path implementado pero no ejercitado por falta de credenciales).
+- **Archivos tocados**:
+  - `lib/usps/classify.ts` — `classifyInput(raw)` discriminated union (`empty | zip | address | invalid`). Address devuelve `extractedZip` cuando contiene `\b\d{5}(?:-\d{4})?\b` (regex acepta ZIP+4 pero conserva sólo los 5). Aislado del cliente para que T20 (server action `getAvailableProviders`) y, si conviene, `hero-search.tsx` lo compartan en el futuro sin importar `server-only`.
+  - `lib/usps/client.ts` — `validateAddress(input)` con tipos `ValidateAddressOk | ValidateAddressError` (códigos `empty | invalid_format | not_found | upstream | rate_limited`). Cache `Map<string, {value, expiresAt}>` TTL 60s, evict trivial cuando `size > 500`. Si `USPS_USER_ID` y `USPS_API_BASE` están seteadas → llama Web Tools legacy (`API=CityStateLookup` para ZIP, `API=Verify` para address) con XML armado por string-templating + `escapeXml`/`decodeXml`. Sin libs XML: `extractTag(body, "City"|"State"|"Zip5"|"Description")` con regex case-insensitive cubre la respuesta esperada. Si no hay creds → mock determinista: ZIP retorna `{zip}` sin city/state; address retorna `{street, zip}` si pudo extraer ZIP, error `not_found` si no. Timeout 5s con `AbortController`. `import "server-only"` en línea 1.
+- **Decisiones clave**:
+  - **Mock por defecto, real por env-presence**: el task estaba "Bloqueada por cliente: credenciales USPS reales". En vez de stub-or-real con flag explícito, el switch es `process.env.USPS_USER_ID && process.env.USPS_API_BASE`. Cuando el cliente entregue creds, basta pegarlas en `.env`; sin redeploys de código. Coherente con `lib/resend/client.ts`/`lib/webhook/trigger.ts` previstos en T32/T33 (mismo patrón "noop si no configurado").
+  - **API legacy XML, no la nueva REST OAuth2** (apis.usps.com): los env vars en `.env.example` (`USPS_USER_ID`, `USPS_API_BASE`) datan de la decisión inicial del cliente y apuntan al estilo Web Tools. La API legacy sigue activa en abril 2026 según el contrato actual de USPS; si migra, sólo cambian `lookupZipReal`/`verifyAddressReal` (interfaz pública estable). Documentar al cliente que si entrega un OAuth client_id/secret habrá que swappear esas dos funciones.
+  - **Regex parser en lugar de DOMParser/xml2js**: la respuesta de Web Tools es plana (1 nivel de tags relevantes); regex `<Tag>([^<]*)</Tag>` cubre 100% de los casos sin agregar dep. Trade-off: si USPS devuelve el tag con atributos o anidado, el parser falla → return `upstream`. Aceptable; los endpoints `CityStateLookup` y `Verify` no anidan.
+  - **`source: "usps" | "mock"`** en el resultado: T20 puede loguearlo o mostrar warning en admin si está corriendo en producción con mock activo (smell test "olvidamos las creds").
+  - **Cache key = `input.trim().toLowerCase()`**: `33101`, `33101 ` y `33101 ` colisionan (deseado). Address con espacios distintos colisionan igual. Si en el futuro un usuario hace `Validate Address NY` vs `validate address ny` ambos se cachean igual — no problemático para el caso uso.
+  - **Cache eviction trivial** (delete oldest cuando >500): no es LRU real, es FIFO. Suficiente para 60s TTL en un solo proceso; el Map nunca debería crecer mucho. Si pasa a multi-instance/serverless, mover a Redis (T20 puede vivir sin esto).
+  - **`import "server-only"`** en cliente: protege contra import accidental desde un client component (env vars con `process.env.X` no-public se serializarían a `undefined` en el bundle de cliente y caería al mock silenciosamente — peor que un build error). Costo: requiere shim en smoke tests fuera de Next.
+- **Gotchas / aprendizajes**:
+  - **`server-only` rompe `tsx`/Node fuera del compilador de Next**: el módulo throw-on-import en runtime puro. Para smoke tests fuera de Next hay que monkey-patch `Module._resolveFilename` redirigiendo `"server-only"` a un noop CJS. Patrón aplicable a futuros wrappers (Resend/USPS/Webhook): si quiero smoke con `tsx` directo, dejar el smoke como archivo efímero con el shim, no en repo permanente. (Smoke `smoke-t19.ts` borrado tras verificación.)
+  - **Regex case-insensitive `[^<]*` no soporta `&amp;` recursivos**: el `decodeXml` posterior los traduce, pero si el contenido del tag tiene `<` literal (escapado como `&lt;`) el match captura igual. OK para campos que USPS no escapa con `<`/`>` (city names, state codes, ZIP).
+  - **`AbortController` + `clearTimeout` en finally**: patrón estándar Next 16 fetch (no edge-case). El error `name === "AbortError"` permite distinguir timeout de network failure y dar mensaje útil.
+  - **Address sin ZIP → `not_found`** (no `invalid_format`): la dirección puede ser válida pero faltarle ZIP. Distinguirlo del formato roto ayuda a la UI a guiar al usuario ("agregue su ZIP" vs "input inválido"). T20 puede traducir a copy específico.
+  - **`addAddress` legacy XML acepta `Address2` para la calle** (sí, contraintuitivo: Address1 es opcional/secundaria como apartamento, Address2 es la línea principal). Documentado en USPS Web Tools docs; el wrapper lo respeta.
+- **Verificación realizada**:
+  - `rm -rf .next && npm run build` → ✓ Compiled successfully; no rutas nuevas. TypeScript ok.
+  - Smoke (`smoke-t19.ts` efímero, ya borrado) cubrió 8 casos: empty → `empty`; ZIP `33101` → ok mock con `zip=33101`; numérico corto/largo → `invalid_format`; address con ZIP → ok extrayendo `20500`; address sin ZIP → `not_found`; garbage `ab` → `invalid_format` con mensaje "Enter a 5-digit ZIP code or a full address."; repeat ZIP → cache hit (mismo objeto serializado, mismo `source: "mock"`). Todos los outputs coinciden con los tipos `ValidateAddressResult` exportados ✓.
+  - **Limitación**: el path real USPS (`lookupZipReal`/`verifyAddressReal`) no se ejerció. Cuando el cliente entregue `USPS_USER_ID` válido, smoke con `33101` debería retornar `source: "usps"` con `city: "MIAMI"`, `state: "FL"`. Sin creds, el wrapper se mantiene 100% mockeado y deterministic.
+- **Pendiente para próxima sesión**:
+  - **T20 — Lookup de proveedores por ZIP**. Server action `getAvailableProviders(zip)` que: ejecuta `validateAddress(zip)` (T19) → si `ok` consulta `findProvidersByZip(result.zip)` (T11) → para cada proveedor activo lee planes activos ordenados (`listPlansByProvider` filtrado). Tipo de retorno claro para consumir en `checkout/plan` (T24). Si `validateAddress` retorna `error.code === "not_found"` → retornar lista vacía con metadata; si `invalid_format` → propagar el mensaje al UI.
+  - Cuando lleguen creds USPS reales: smoke con `33101`/`90210` debe retornar `source: "usps"` y enriquecer city/state. Considerar exponer un script `scripts/check-usps.ts` para validar la integración antes de deploy.
+  - Si T17 (`hero-search.tsx`) quiere validación más estricta antes del redirect, puede importar `classifyInput` desde `lib/usps/classify.ts` (no requiere `server-only`) — ya está aislado para ese reuso.
+
+## 2026-04-28 · T18 — Secciones informativas
+
+- **Estado final**: ✅ completada (build verde; smoke visual pendiente de `npm run dev`).
+- **Archivos tocados**:
+  - `components/landing/why-choose-us.tsx` — server; 4 cards (MapPin/Zap/HeartHandshake/ShieldCheck) en grid `sm:2 lg:4`, fondo `bg-background`, cards `bg-surface`. Iconos en círculo `bg-mahalo-cyan-300/20` con icono `text-mahalo-blue-600` (§7 design-system).
+  - `components/landing/providers-grid.tsx` — server async; `await listProviders()` filtrado por `isActive`. Grid `2/3/4` columnas. Cada card lleva borde superior 4px en `provider.primary_color` (§9 design-system); render condicional: `next/image` sobre `logoUrl` con `max-h-12 object-contain`, fallback a `name` text. Empty state con borde dashed cuando no hay activos. Sección con `bg-surface` para alternar con WhyChooseUs.
+  - `components/landing/how-it-works.tsx` — server; 3 pasos numerados, círculos `bg-mahalo-navy-900` con número blanco. `<ol>` semántico con grid `md:3`.
+  - `components/landing/faq.tsx` — server; 5 Q&A placeholder envueltos en `Accordion` shadcn (base-ui). `AccordionItem` con `value={item.q}`. Comentario `{/* TODO: replace placeholder content with client-approved copy. */}` arriba.
+  - `components/landing/testimonials.tsx` — server; 3 quotes placeholder en `<figure>` con `QuoteIcon` lucide. `bg-background` con cards `bg-surface`. Comentario TODO de placeholder.
+  - `app/(public)/page.tsx` — reemplaza el `.map(...)` de placeholders por composición explícita: `Hero → WhyChooseUs → ProvidersGrid → HowItWorks → Faq → Testimonials`. Agrega `export const revalidate = 60` para que la landing siga siendo prerenderable (ISR) pero actualice cuando admin toggle un proveedor.
+- **Decisiones clave**:
+  - **`revalidate = 60` en lugar de `force-dynamic`**: `ProvidersGrid` lee DB pero la lista cambia con frecuencia muy baja (admin toggles ocasionales). ISR de 60s preserva el `○ static` ⇒ HTML cacheado en CDN (Lighthouse mobile va a agradecerlo en T37) y a la vez el bake-in del build no congela proveedores hasta el próximo deploy. Alternativa rechazada: `revalidatePath('/')` en `lib/providers/actions.ts`. Más exacto pero acopla landing al admin; el admin desconoce la URL pública. ISR pasivo es el contrato más simple.
+  - **Alternancia visual de fondos** `background → surface → background → surface → background`: separa secciones sin recurrir a `border-b` extra (que ya cubre el detalle en transiciones bg→bg). Mantiene la jerarquía limpia y respeta §1 design-system ("claridad sobre decoración").
+  - **`bg-surface` como utilidad Tailwind**: ya expuesta vía `--color-surface: var(--surface)` en `app/globals.css:25`. Sin tocar tema.
+  - **`provider.primaryColor` como `borderTopColor` inline-style** (no class): el color es dato runtime, no se puede generar via Tailwind. Igual patrón que aplicará T24 a las plan cards (§9 design-system). `borderTopWidth: 4` también inline para mantener consistencia con el override.
+  - **Empty state explícito en ProvidersGrid**: si no hay proveedores activos en DB, mensaje friendly en card dashed en lugar de grid vacío. Cubre el caso "ambiente fresco sin seed completo".
+  - **`<ol>` semántico** en HowItWorks (no `<ul>`): los pasos son ordenados por definición. A11y wins.
+  - **No instalé Carousel/Embla** para Testimonials. 3 cards en grid estático cubren el placeholder; cuando llegue copy real del cliente y/o más de 3, evaluar si vale agregar carousel (mobile sí lo querrá).
+  - **`QuoteIcon` de lucide** en lugar de carácter `"`: uniforme con resto de iconografía (§7 stroke 1.75) y queda recoloreable a `text-mahalo-blue-600`.
+- **Gotchas / aprendizajes**:
+  - **Apóstrofes en strings JS** (no JSX): puedes escribir `"don't"` directamente en el array de FAQs, lint no se queja porque no está en posición JSX. Solo `react/no-unescaped-entities` aplica al texto en JSX directo. Ahorra refactor a `&apos;` o `dangerouslySetInnerHTML`. Lección aplicable a futuras data tables/strings constantes.
+  - **`AccordionItem` de shadcn (base-ui)** acepta `value: string` (forwardea props). Útil pasar la pregunta como value para tener anclas estables si en el futuro queremos `?faq=...` query.
+  - **`/` permanece `○ static` con `revalidate=60`**: el route table muestra `1m  1y` (revalidate / expire). Confirma que el HTML se genera al build y se refresca pasivamente, no per-request — perfil de Lighthouse intacto. Si una sección futura necesita datos per-user, mover esa parte a un client component o RSC con `dynamic = 'force-dynamic'` aislado en un slot.
+  - **`max-h-12 w-auto object-contain`** para logos heterogéneos: los proveedores tienen logos con aspect ratios muy distintos (Verizon Fios alto vs Spectrum ancho). Limitar la altura y dejar el width libre con `object-contain` los normaliza visualmente sin distorsionar.
+  - El `revalidate` exportado por una page asegura que **toda** la página se trate como ISR — incluido el Hero estático que nunca cambia. Costo despreciable; no vale dividir.
+- **Verificación realizada**:
+  - `rm -rf .next && npm run build` → ✓ Compiled successfully (22s); TypeScript ok. `/` listada como `○` con revalidate `1m` y expire `1y`. Resto de rutas intactas. Static prerender disparó la query a DB (smoke contra DB en docker funcionó al build, lista de 8 proveedores del seed se baked-in).
+  - **Limitación**: animación del accordion, hover de provider cards y border colors por proveedor requieren `npm run dev` en navegador. T31 hará QA visual completo del embudo+landing.
+- **Pendiente para próxima sesión**:
+  - **T19 — Wrapper USPS API** (Fase 2 sigue). No depende de UI; bloqueado parcialmente por credenciales reales del cliente — implementar con stub/mock por defecto y env-flag para activar el cliente real.
+  - Cuando llegue contenido legal/FAQ/testimonials del cliente, reemplazar arrays placeholder en `faq.tsx` y `testimonials.tsx` (búsqueda: `TODO: replace placeholder`).
+  - Si admin reporta lag al actualizar proveedores en landing, considerar pasar a `revalidatePath('/')` en `lib/providers/actions.ts` (más reactivo que ISR de 60s).
+
+## 2026-04-28 · T17 — Hero con buscador ZIP
+
+- **Estado final**: ✅ completada (build verde; smoke visual pendiente de `npm run dev`).
+- **Archivos tocados**:
+  - `components/landing/hero-search.tsx` — client; `<form>` con `<Input>` + `<Button variant="primary">`. Función `classifyInput` decide ZIP vs address vs invalid; submit pushea `/checkout?zip=...` o `?address=...` vía `useRouter`. Errores inline con `aria-invalid` + `aria-describedby`. Botón disabled durante `submitting`.
+  - `components/landing/hero.tsx` — server; sección `#hero` con `bg-mahalo-gradient-soft`, headline navy-900, eyebrow blue-600 (utility `.eyebrow`) y `<HeroSearch>`. Decoración `WifiArcsDecoration` (SVG inline) en `absolute -right-24 -bottom-24`, `opacity-[0.07]`, color `text-mahalo-blue-600`.
+  - `app/(public)/page.tsx` — reemplaza el placeholder inline `#hero` por `<Hero />`. Las 5 secciones placeholder restantes quedan para T18.
+- **Decisiones clave**:
+  - **Clasificación de input**: solo dígitos + len 5 → ZIP; solo dígitos + len ≠ 5 → error "ZIP must be exactly 5 digits"; >=4 chars con no-dígitos → address; <4 chars no-numérico → error genérico ("Enter a 5-digit ZIP code or a full address"). Empuja al usuario a un input parseable sin requerir USPS aún (T19/T20). El server validará nuevamente en `/checkout` cuando T19 esté listo.
+  - **Redirect `/checkout?zip=...` o `?address=...`** vía `URLSearchParams` (no template literal con `encodeURIComponent` ad-hoc). T23 leerá estos query params para crear el draft order.
+  - **Decoración Wi-Fi como SVG inline** en lugar de imagen. Ventajas: hereda `currentColor` (puedo controlar el tinte con `text-mahalo-blue-600`), sin request extra, recolor trivial. Tres arcos + dot reproducen el motivo del logo (§8 design-system).
+  - **`opacity-[0.07]`** dentro del rango §8 (5–8%). Suficiente para acompañar sin competir con el headline. Posicionado bottom-right para no chocar con el form en mobile (queda fuera del viewport visual del input).
+  - **`isolate overflow-hidden`** en la sección para crear stacking context y recortar el SVG que se extiende más allá del contenedor (negative offsets `-right-24 -bottom-24`).
+  - **`relative` en el `div` del contenido** para que el texto/form quede sobre el SVG decorativo sin necesidad de `z-index` explícito.
+  - **`autoComplete="postal-code"`** en el input. Es lo más útil dado que la mayoría tipearán ZIP; no rompe el path "address" (el usuario sobrescribe).
+  - **Estado `submitting` con botón disabled** en lugar de spinner: el push de `useRouter` es prácticamente instantáneo en client-side nav; el feedback "Checking…" cubre el caso de transición lenta sin agregar dependencia de spinner.
+  - **Error vs helper text en el mismo slot** (debajo del form): cuando hay error, lo reemplaza con `role="alert"`; cuando no, muestra helper neutral. Evita layout shift entre estados.
+  - **Header CTA "Check Availability" (`/#hero`)** ya creado en T16 sigue válido — apunta exactamente al `id="hero"` que renderiza esta sección. No requiere cambio en `site-header.tsx`.
+- **Gotchas / aprendizajes**:
+  - **`<Input>` de shadcn/Base UI no acepta `type="number"` para ZIP** sin perder UX (input number ofrece spinner, scroll-wheel mutation, no respeta `inputMode`). Usar `type="text"` + `inputMode="numeric"` es preferible en general; acá uso `inputMode="text"` porque el campo acepta address también. Si más adelante se separa en dos campos, cambiar a `inputMode="numeric"` en el ZIP.
+  - **Validación deferida server-side**: T17 valida formato (digit count) pero no si el ZIP existe en la cobertura. Eso es trabajo de T19/T20 (USPS + `findProvidersByZip`). El embudo en T23+ debe tolerar un ZIP "5-digit válido formalmente" que llegue sin cobertura — el paso 2 del embudo muestra "No coverage" según T24.
+  - **Next 16 client component en route group `(public)`**: `useRouter` de `next/navigation` (no `next/router`) funciona out-of-the-box. No requirió tocar el layout porque `app/layout.tsx` ya tiene `ClerkProvider` envolviéndolo todo (su provider no rompe `useRouter`).
+- **Verificación realizada**:
+  - `rm -rf .next && npm run build` → ✓ Compiled successfully (5.5s); TypeScript ok. `/` sigue como `○ static` (Next pre-rendea la landing aunque tenga client components dentro — el form se hidrata en cliente). Admin routes intactas.
+  - **Limitación**: validación inline (empty / invalid ZIP), redirect a `/checkout?zip=...` o `?address=...`, hover/focus de gradient button y la decoración Wi-Fi a baja opacidad requieren `npm run dev` y verificación en navegador (375px y desktop). T31 hará QA visual del embudo entero.
+- **Pendiente para próxima sesión**:
+  - **T18 — Secciones informativas**. Reemplazar placeholders `#why`/`#providers`/`#how`/`#faq`/`#testimonials` con componentes en `components/landing/`. `ProvidersGrid` debe leer DB (depende de T08). Resto con contenido placeholder marcado.
+  - Cuando T23 (`createDraftOrder`) esté listo, `/checkout` debe leer `searchParams.zip` o `searchParams.address` y crear el draft con esos campos. El path actual envía a `/checkout` que aún no existe — primer usuario que clickee verá un 404 hasta que T23 cree la ruta. Aceptable: T17 sólo valida que la redirección dispare con el query param correcto.
+  - Considerar reusar `classifyInput` desde `lib/checkout/` cuando T19/T20 necesiten el mismo classifier server-side (move a un módulo compartido client+server-safe).
+
+## 2026-04-28 · T16 — Layout público y navegación
+
+- **Estado final**: ✅ completada (build verde; smoke visual pendiente de `npm run dev`).
+- **Archivos tocados**:
+  - `app/(public)/layout.tsx` — route group `(public)` con `SiteHeader` + `<main>` flex-1 + `SiteFooter` en `min-h-screen flex-col`. El group no afecta la URL (`/` sigue siendo `/`).
+  - `app/(public)/page.tsx` — placeholder de landing con secciones ancladas (`#hero`, `#why`, `#providers`, `#how`, `#faq`, `#testimonials`) para validar el scroll suave. Reemplazará T17/T18.
+  - `app/(public)/legal/{terms,privacy}/page.tsx` — placeholders mínimos con `metadata` y `<!-- TODO: legal content -->`. Cubre el "Depende de T16" de T21 sin completarlo (T21 sigue `[ ]`).
+  - `app/page.tsx` — **eliminado** (era la landing default de Next; conflictúa con `app/(public)/page.tsx` porque ambos resuelven a `/`).
+  - `app/globals.css` — `html { scroll-behavior: smooth }` agregado al `@layer base` para los anchors del header/footer.
+  - `components/landing/nav-config.ts` — `publicNavItems` (anchors a `/#why`, `/#providers`, `/#how`, `/#faq`, `/#testimonials`) y `publicFooterLinks` (`/legal/terms`, `/legal/privacy`, `mailto:hello@…`).
+  - `components/landing/site-header.tsx` — server component; sticky `top-0 z-40` con `backdrop-blur`, logo a la izq, nav anchors al centro (oculto en mobile), CTA `Button variant="primary"` "Check Availability" + `SiteMobileNav` a la der.
+  - `components/landing/site-mobile-nav.tsx` — client; reusa `Sheet` (side="right") + `MenuIcon` siguiendo el patrón de `components/admin/mobile-sidebar.tsx`. Cierra al click via `onClick={() => setOpen(false)}`.
+  - `components/landing/site-footer.tsx` — server; surface bg, logo + tagline + links + copyright con año dinámico (`new Date().getFullYear()`).
+- **Decisiones clave**:
+  - **Route group `(public)`** en lugar de mover todo a `/landing/`. La URL pública debe ser `/`. Los grupos de Next App Router permiten un layout separado del de `/admin` sin cambiar el path. El root `app/layout.tsx` (con `ClerkProvider`) sigue envolviendo todo; `(public)/layout.tsx` agrega header/footer encima.
+  - **Anchors absolutos `/#why`** (no `#why`): permite que el link funcione desde `/legal/terms` (vuelve a la home y hace scroll). Si el usuario está ya en `/`, el navegador hace scroll sin recargar.
+  - **`Logo` reusado** sin variante `white` (header tiene fondo claro/blur). El gradiente del CTA "Check Availability" es la única aparición de marca en el header — alineado con `design-system.md` §3 ("CTA principal de landing").
+  - **Header sticky con backdrop-blur** + bg semitransparente. Patrón estándar para landings; mantiene el CTA siempre visible.
+  - **`scroll-behavior: smooth` global** (criterio de aceptación: "anchors hacen scroll suave"). Aplicarlo en el `<html>` lo cubre tanto para el header como para los links del footer y de cualquier sección futura.
+  - **Mobile menu en `side="right"`** (vs admin que usa `side="left"`). Convención común en sitios públicos: hamburguesa a la derecha → sheet a la derecha.
+  - **CTA "Check Availability" en mobile** dentro del Sheet, no fijo en el header (para no comer espacio). Apunta a `/#hero` que en T17 será reemplazado por el buscador real.
+  - **`code` con backticks** (`<code>#hero</code>`) en placeholders de página para que sea obvio en visual review qué se construirá en T17/T18 sin generar contenido fake "definitivo".
+- **Gotchas / aprendizajes**:
+  - **`.next/` cache rompe build tras eliminar `app/page.tsx`.** Primer build falló con `Cannot find module '../../../app/page.js'` desde `.next/dev/types/validator.ts:150`. Solución: `rm -rf .next` y rebuild. Pasa cada vez que se elimina o renombra una page route en este proyecto; recordatorio para futuras refactors de file-system routing.
+  - **Conflicto entre `app/page.tsx` y `app/(public)/page.tsx`.** Ambos resuelven a `/`. Next 16 no warned al crear el segundo — el build hace check pero el cache stale del primero confunde la inferencia. Borrar el viejo es obligatorio antes del build limpio.
+  - **`SheetContent` width 72** funciona con `w-72` directo (clase Tailwind), igual que admin's `MobileSidebar`. No requiere prop especial del primitive.
+  - **`Button` con `render={<Link />}`** es el patrón correcto para componer Base UI primitives con Next Link (igual que en admin). NO usar `asChild`: el wrapper de Base UI es `render`.
+- **Verificación realizada**:
+  - `rm -rf .next && npm run build` → ✓ Compiled successfully (5.8s); TypeScript ok. Rutas públicas listadas: `/` (○ static), `/legal/privacy` (○), `/legal/terms` (○). Admin routes intactas.
+  - **Limitación**: scroll suave + breakpoint mobile/desktop + sticky header requieren `npm run dev` y verificación en navegador (DevTools 375px y 1280px). No bloqueante; T31 hará QA visual completo del embudo.
+- **Pendiente para próxima sesión**:
+  - **T17 — Hero con buscador ZIP**. Reemplazará la sección `#hero` placeholder con `<HeroSearch>` que valida 5-dígitos vs address, y aplica `--mahalo-gradient-soft` y arcos Wi-Fi (§3, §8). El header CTA "Check Availability" puede quedar como link a `/#hero` o pasar a anchor + focus del input cuando el hero exista.
+  - T18 reemplazará las secciones placeholder `#why`, `#providers`, `#how`, `#faq`, `#testimonials` con componentes reales en `components/landing/`.
+  - T21 (legal) ya tiene los archivos placeholder creados — sólo falta texto del cliente; no marcar `[x]` hasta que llegue contenido.
+
 ## 2026-04-28 · T15 — Customers (listado + detalle)
 
 - **Estado final**: ✅ completada (DB + build verde; UI E2E pendiente de sesión Clerk como T08–T14).

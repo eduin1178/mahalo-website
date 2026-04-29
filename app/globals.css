@@ -106,6 +106,7 @@
   }
   html {
     @apply font-sans antialiased;
+    scroll-behavior: smooth;
   }
 }
 

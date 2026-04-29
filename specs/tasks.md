@@ -225,7 +225,7 @@ Convenciones:
 ## Fase 2 — Landing pública
 
 ### T16 · Layout público y navegación
-- **Estado**: [ ]
+- **Estado**: [x]
 - **Objetivo**: Shell de la landing.
 - **Acciones**:
   1. `app/(public)/layout.tsx` con header (logo + nav) y footer.
@@ -237,7 +237,7 @@ Convenciones:
 - **Depende de**: T03
 
 ### T17 · Hero con buscador ZIP
-- **Estado**: [ ]
+- **Estado**: [x]
 - **Objetivo**: CTA principal funcional.
 - **Acciones**:
   1. Componente `<HeroSearch>` con input que acepta ZIP de 5 dígitos o dirección libre.
@@ -249,7 +249,7 @@ Convenciones:
 - **Depende de**: T16
 
 ### T18 · Secciones informativas
-- **Estado**: [ ]
+- **Estado**: [x]
 - **Objetivo**: Why, Providers, How It Works, FAQ, Testimonials.
 - **Acciones**:
   1. Componentes en `components/landing/`: `WhyChooseUs`, `ProvidersGrid` (lee de DB), `HowItWorks` (3 pasos), `Faq` (shadcn `Accordion` con contenido placeholder), `Testimonials` (placeholder).
@@ -260,7 +260,7 @@ Convenciones:
 - **Bloqueada por cliente**: contenido FAQ y testimonials.
 
 ### T19 · Wrapper USPS API
-- **Estado**: [ ]
+- **Estado**: [x]
 - **Objetivo**: Validar dirección/ZIP server-side.
 - **Acciones**:
   1. `lib/usps/client.ts` con función `validateAddress(input)` que detecta si es ZIP o address y llama al endpoint correspondiente.

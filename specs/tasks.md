@@ -414,7 +414,7 @@ Convenciones:
 ## Fase 4 — Notificaciones
 
 ### T32 · Email "new order" con Resend
-- **Estado**: [ ]
+- **Estado**: [x]
 - **Objetivo**: Notificar al admin/agente.
 - **Acciones**:
   1. `lib/resend/client.ts` (singleton).
@@ -426,7 +426,7 @@ Convenciones:
 - **Bloqueada por cliente**: API key Resend + dominio verificado.
 
 ### T33 · Webhook a n8n
-- **Estado**: [ ]
+- **Estado**: [x]
 - **Objetivo**: Disparar automatización externa.
 - **Acciones**:
   1. `lib/webhook/trigger.ts` con función `triggerWebhook(orderId)`.

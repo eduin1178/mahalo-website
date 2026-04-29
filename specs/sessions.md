@@ -2,6 +2,46 @@
 
 Bitácora cronológica de sesiones de implementación. Cada entrada se anexa al cierre de una sesión por la skill `/implement` (ver `.claude/skills/implement/SKILL.md`).
 
+## 2026-04-28 · T33 — Webhook a n8n
+
+- **Estado final**: ✅ completada
+- **Archivos tocados**:
+  - `lib/webhook/trigger.ts` — `triggerWebhook(orderId)` con tipo `WebhookPayload` exportado. Lee `webhook_url` de settings; si falta, log warn y retorna `{ ok: true, skipped: true }`. POST JSON con `AbortController` (timeout 5s), 1 retry con backoff 2s. Payload incluye order + customer + provider + plan + addOns resueltos + totals (calculateTotal).
+- **Decisiones clave**:
+  - Cuando una FK de la orden es null (draft incompleto), su campo en el payload va `null` en vez de fallar — para que la función sea segura aunque se llame fuera del flujo `submitOrder`.
+  - `event: "order.submitted"` y `emittedAt` ISO en raíz del payload, para que n8n pueda branchear por evento si en el futuro se agregan más tipos.
+  - Retry simple inline (no librería externa); reutilizar para otros webhooks no es objetivo de este sprint.
+- **Gotchas / aprendizajes**:
+  - `fetch` en Node 22 ya soporta `AbortSignal.timeout()` pero usé `AbortController` manual + `setTimeout` para garantizar `clearTimeout` en éxito (mejor recursos en lambdas/edge si llegara a moverse).
+  - `payment_data` viaja completo en el payload (incluye PAN/CVV en plain text). El cliente firmó el requerimiento de plano; consumidor (n8n) es responsable del manejo seguro. Anotado para revisar antes de prod (ver pendientes del cliente "cifrado de payment_data").
+- **Pendiente para próxima sesión**:
+  - T34 — integrar `triggerWebhook` y `sendNewOrderEmail` en `submitOrder` con `Promise.allSettled`.
+- **Verificación realizada**:
+  - `npm run build` → ✓ sin errores TS.
+  - Validación end-to-end con `webhook.site` se hará en T34/T40 cuando `submitOrder` esté listo.
+
+## 2026-04-28 · T32 — Email "new order" con Resend
+
+- **Estado final**: ✅ completada (con mock dev fallback hasta que cliente entregue API key)
+- **Archivos tocados**:
+  - `lib/resend/client.ts` — singleton `getResend()` que retorna `null` si `RESEND_API_KEY` está vacío. `getFromEmail()` con default a `noreply@mahaloenterprise.com`.
+  - `lib/resend/templates/new-order.ts` — `renderNewOrderEmail(data)` retorna `{subject, html, text}`. HTML con header gradiente de marca + secciones (Customer, Plan, Add-ons, Total, Addresses, Schedule). Escape manual de strings (sin dependencia adicional).
+  - `lib/resend/send.ts` — `sendNewOrderEmail(orderId)` carga order + customer + provider + plan + addOns en paralelo, calcula totales con `calculateTotal`, lee `notification_email` de settings, despacha vía Resend.
+- **Decisiones clave**:
+  - **Mock dev no falla la orden**: si falta `RESEND_API_KEY` o `notification_email`, retorna `{ok:true, mocked:true}` con `console.warn`. Razón: en T34 (`Promise.allSettled` + nunca bloquear submitOrder por notificaciones) un fallo de email no debe abortar el submit; un mock benigno tampoco. Cuando el cliente entregue las credenciales el comportamiento se enciende sin tocar código.
+  - **HTML inline string en lugar de React Email**: el plan menciona "(opcional)" y agregar React Email son ~3 paquetes nuevos para una plantilla. String escapado manual basta para un email transaccional simple. Si crece, migrar.
+  - **Retorno tipado `{ok}`** en vez de throws: T34 hará `Promise.allSettled` y necesita inspeccionar resultado por canal. Una excepción se trata igual pero el shape consistente facilita logs.
+  - **Recipient desde `getSetting('notification_email')`** (no env): permite cambiar el destinatario desde `/admin/settings` sin redeploy, como T12 dejó preparado.
+- **Gotchas / aprendizajes**:
+  - `result.error` en Resend SDK v6 viene como objeto con `.message`, no como throw. Cubrir ambos caminos (try/catch + check de `result.error`) para no perder un fallo.
+  - Importar `formatUsd` desde `lib/orders/totals.ts` está OK aquí porque este archivo es server-only (`lib/resend/send.ts` y la template también llevan `import "server-only"`); el problema documentado en T28 era específico de client components.
+- **Pendiente para próxima sesión**:
+  - **T33 — Webhook a n8n** (`triggerWebhook(orderId)` con retry + timeout). No bloqueada por cliente, listo para implementar.
+  - Cliente: API key Resend + dominio verificado para activar el envío real.
+- **Verificación realizada**:
+  - `npm run build` → ✓ Compiled successfully (6.4s); TypeScript ok. Sin nuevas rutas (módulo de lib).
+  - Lectura del shape: con orden incompleta retorna `{ok:false}`; con `notification_email` o `RESEND_API_KEY` ausentes retorna `{ok:true, mocked:true}` y loggea warn.
+
 ## 2026-04-28 · T29 — Paso 7: Installation Schedule
 
 - **Estado final**: ✅ completada

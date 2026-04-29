@@ -292,7 +292,7 @@ Convenciones:
 - **Bloqueada por cliente**: textos legales finales.
 
 ### T22 · SEO básico
-- **Estado**: [~]
+- **Estado**: [x]
 - **Objetivo**: Metadata y discoverability.
 - **Acciones**:
   1. `metadata` en root layout: title template, description, OG tags placeholder.

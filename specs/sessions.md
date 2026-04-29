@@ -608,3 +608,17 @@ Reglas:
 - **Pendiente para próxima sesión**:
   - T02: al instalar deps, ejecutar `npx next typegen` para tipos `PageProps` / `LayoutProps` / `RouteContext`.
   - T02: limpiar `--turbopack` de los scripts de `package.json` si Create Next App lo dejó.
+
+## 2026-04-28 · T22 — SEO básico
+
+- **Estado final**: ✅ completada
+- **Archivos tocados**:
+  - `app/layout.tsx` — metadata expandida con `metadataBase`, title template, OG/Twitter, robots.
+  - `app/sitemap.ts` — sitemap programático (`/`, `/legal/terms`, `/legal/privacy`).
+  - `app/robots.ts` — robots con `disallow` para `/admin` y `/checkout`, sitemap apuntando a `NEXT_PUBLIC_APP_URL`.
+  - `public/og.png` — placeholder copiado de `logo.png` (sustituir por imagen 1200x630 brandeada cuando cliente entregue).
+- **Decisiones clave**:
+  - `metadataBase` y URLs derivan de `NEXT_PUBLIC_APP_URL` con fallback a localhost; evita hardcodear dominio.
+  - Bloqueo en robots de `/admin` y `/checkout` para que crawlers no indexen panel ni embudo.
+- **Verificación realizada**:
+  - `npm run build` ok; rutas `/robots.txt` y `/sitemap.xml` listadas como estáticas en el output.

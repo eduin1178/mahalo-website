@@ -2,6 +2,21 @@
 
 Bitácora cronológica de sesiones de implementación. Cada entrada se anexa al cierre de una sesión por la skill `/implement` (ver `.claude/skills/implement/SKILL.md`).
 
+## 2026-04-28 · T21 — Páginas legales
+
+- **Estado final**: ✅ completada
+- **Archivos tocados**:
+  - `specs/tasks.md` — T21 marcada `[x]`.
+- **Decisiones clave**:
+  - Los archivos `app/(public)/legal/terms/page.tsx` y `legal/privacy/page.tsx` ya habían sido creados durante T16 con placeholder y marcador `// TODO: legal content`. No se reescribieron — cumplen el criterio tal cual.
+- **Gotchas / aprendizajes**:
+  - Auditoría rápida confirmó que el footer (`components/landing/nav-config.ts`) ya enlaza a las dos rutas. T16 anticipó el deliverable de T21.
+- **Pendiente para próxima sesión**:
+  - Cliente: textos legales finales para reemplazar el placeholder.
+- **Verificación realizada**:
+  - `npm run build` → ✓ ambas rutas se prerenderizan como estáticas (`○ /legal/privacy`, `○ /legal/terms`).
+
+
 Formato de entrada:
 
 ```markdown
@@ -28,6 +43,25 @@ Reglas:
 ---
 
 <!-- Las entradas se agregan debajo a partir de la primera sesión de implementación. -->
+
+## 2026-04-28 · T20 — Lookup de proveedores por ZIP
+
+- **Estado final**: ✅ completada
+- **Archivos tocados**:
+  - `lib/coverage/availability.ts` — nuevo. `getAvailableProviders(input)` compone `validateAddress` (T19) + `findProvidersByZip` (T11) + un `select` con `inArray` sobre `plans` activos. Devuelve `AvailabilityResult` (discriminated union ok/error) con `providers: { provider, plans }[]`.
+- **Decisiones clave**:
+  - **Acepta `input` (no solo `zip`)** porque T19 ya clasifica ZIP vs address libre. La landing puede pasar lo que el usuario tipeó sin pre-validar; el ZIP normalizado vuelve en `result.zip` para guardarlo en el draft order (T23).
+  - **Filtra proveedores sin planes activos**: la criterio dice ">=1 proveedor con planes". Un provider cubierto pero sin plan activo es ruido para el embudo (no hay nada que mostrar en step 2). Si hace falta listarlos en otro contexto, exponer un flag `includeEmpty` más adelante.
+  - **Batch query con `inArray`** en vez de N+1 con `listPlansByProvider`: una sola consulta agrupa los planes por `providerId` en memoria. Coherente con que la landing puede listar 4–6 proveedores en zonas saturadas.
+  - Ubicado en `lib/coverage/` (no `lib/checkout/`) porque es lookup de cobertura — el embudo lo consume pero el módulo es independiente del estado del draft.
+- **Gotchas / aprendizajes**:
+  - `findProvidersByZip` ya filtra `providers.is_active = true`, así que no hay que repetirlo aquí. Pero los **planes** sí necesitan filtro explícito `is_active = true` (T09 permite togglear).
+  - Reutilizar el código de error de USPS (`ValidateAddressErrorCode`) en el tipo de respuesta evita inventar otro vocabulario; la UI del embudo (T24) discrimina por el mismo `error.code`.
+- **Verificación realizada**:
+  - `npm run build` → ✓ Compiled successfully (7.1s), TypeScript ok.
+  - Lectura cruzada: `findProvidersByZip` retorna `[]` para ZIP no cubierto → `getAvailableProviders` retorna `{ ok: true, zip, providers: [] }` (criterio "ZIP sin cobertura retorna lista vacía").
+- **Pendiente para próxima sesión**:
+  - T21 (legales) o T22 (SEO) son las siguientes en fase 2 sin dependencias bloqueadas. T23 (embudo) ya tiene a T20 como dependencia resuelta.
 
 ## 2026-04-28 · T19 — Wrapper USPS API
 

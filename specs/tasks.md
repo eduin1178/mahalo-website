@@ -272,7 +272,7 @@ Convenciones:
 - **Bloqueada por cliente**: credenciales USPS reales (mockear en dev).
 
 ### T20 · Lookup de proveedores por ZIP
-- **Estado**: [ ]
+- **Estado**: [x]
 - **Objetivo**: Decidir cobertura.
 - **Acciones**:
   1. Server action `getAvailableProviders(zip)` que: valida ZIP con USPS (T19) → consulta `findProvidersByZip` (T11) → retorna proveedores activos con sus planes activos ordenados.
@@ -282,7 +282,7 @@ Convenciones:
 - **Depende de**: T11, T19
 
 ### T21 · Páginas legales
-- **Estado**: [ ]
+- **Estado**: [x]
 - **Objetivo**: Terms y Privacy accesibles.
 - **Acciones**:
   1. `app/(public)/legal/terms/page.tsx` y `legal/privacy/page.tsx` con texto placeholder y `<!-- TODO: legal content -->`.
@@ -292,7 +292,7 @@ Convenciones:
 - **Bloqueada por cliente**: textos legales finales.
 
 ### T22 · SEO básico
-- **Estado**: [ ]
+- **Estado**: [~]
 - **Objetivo**: Metadata y discoverability.
 - **Acciones**:
   1. `metadata` en root layout: title template, description, OG tags placeholder.

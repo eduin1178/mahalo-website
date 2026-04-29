@@ -2,6 +2,90 @@
 
 Bitácora cronológica de sesiones de implementación. Cada entrada se anexa al cierre de una sesión por la skill `/implement` (ver `.claude/skills/implement/SKILL.md`).
 
+## 2026-04-28 · T29 — Paso 7: Installation Schedule
+
+- **Estado final**: ✅ completada
+- **Archivos tocados**:
+  - `lib/orders/draft-actions.ts` — `scheduleInstallation({ year, month, day, hour })`. Construye `Date.UTC(...)` y valida: fecha existe (sin overflow), `getUTCDay() !== 0` (no domingos), `getTime() > Date.now()`, hora ∈ [8,17]. Persiste `orders.scheduledAt` y redirige a `/checkout/confirmation`.
+  - `components/checkout/schedule-form.tsx` — client; shadcn `Calendar` modo `single` con `disabled={[{ before: today }, { dayOfWeek: [0] }]}`; grid de 10 slots de hora 8AM–5PM como radios (sr-only inputs sobre `<label>` cliclkeables). Al cambiar de día se resetea la hora.
+  - `app/(public)/checkout/schedule/page.tsx` — server, `force-dynamic`. Guards: redirect a `/`, `/checkout/plan` o `/checkout/customer` según falten campos. Prefilla con `draft.scheduledAt` (UTC getters).
+- **Decisiones clave**:
+  - **Payload `{ year, month, day, hour }` en lugar de ISO string**: evita ambigüedades de timezone entre cliente y servidor. Ambos lados acuerdan tratar la cita como un instante UTC en la hora elegida (los slots son por hora completa, no se necesita más resolución). Si después se requiere precisión por timezone del cliente, se agrega un `tz` y se convierte en el server.
+  - **Disable de domingos vía `dayOfWeek: [0]` matcher** de react-day-picker en lugar de un loop sobre días: una expresión declarativa, sin recomputaciones.
+  - **`SCHEDULE_HOUR_MIN/MAX` no exportados**: los archivos `"use server"` solo pueden exportar funciones async (lo aprendí al primer build, ver gotcha). Las constantes quedan privadas en `draft-actions.ts` y duplicadas como `HOUR_MIN/MAX` en el form. Si crece, mover a `lib/orders/schedule-config.ts` plain.
+  - **Reset de `hour` al cambiar `date`**: previene el caso donde el usuario eligió 5 PM en un día válido y al cambiar de día queda con un slot que sigue válido pero ya no es el contexto en el que lo pensó.
+- **Gotchas / aprendizajes**:
+  - **Files con `"use server"` solo exportan funciones async**: agregué `export const SCHEDULE_HOUR_MIN = 8` y el build falló con `The module has no exports at all` *en todos* los demás imports del archivo (selectPlan, savePayment, etc.) — Next anula todas las exports del módulo, no solo la inválida. Mover constantes a un módulo aparte o duplicar.
+  - **Construcción `Date.UTC(year, month-1, day, hour)`**: `month` 1-indexed por convención de la API (más legible para Zod/UI), `Date.UTC` es 0-indexed. La validación `scheduledAt.getUTCMonth() !== month - 1` cubre overflow (ej: día 31 en febrero → JS lo rota a marzo, lo rechazamos).
+- **Pendiente para próxima sesión**:
+  - **T30 — Confirmation + commit**: action `submitOrder(orderId)` cambia status a `Pending`, crea entrada en `order_status_history`, dispara email (T32) y webhook (T33), limpia cookie. Página `/checkout/confirmation` lo invoca y muestra el mensaje del PDF.
+- **Verificación realizada**:
+  - `npm run build` → ✓ Compiled successfully; ruta `ƒ /checkout/schedule` listada como dynamic.
+  - Lógica del schema: hora 18 rechazada por Zod; domingo (`dow === 0`) rechazado; fecha pasada rechazada; día overflow (mes/31 inexistente) rechazado.
+
+## 2026-04-28 · T28 — Paso 6: Payment Preference
+
+- **Estado final**: ✅ completada
+- **Archivos tocados**:
+  - `lib/orders/draft-actions.ts` — `savePayment` con Zod `discriminatedUnion("autopay", …)`: rama `false` no requiere `payment`; rama `true` exige `card` (con Luhn) o `ach`. Actualiza `autopayEnabled` + `paymentData`; redirige a `/checkout/schedule`. Comentario `// SECURITY: stored in plain text per requirement; PCI is client responsibility.` arriba.
+  - `components/checkout/payment-form.tsx` — client form: toggle Autopay (custom switch sobre checkbox + peer:checked), tabs shadcn `Card` / `Bank (ACH)` para los campos. Sin react-hook-form: lectura directa con `FormData` y `setError` desde `fieldErrors` del action (es un form chico, dos modos exclusivos).
+  - `app/(public)/checkout/payment/page.tsx` — server component; redirige a `/checkout/customer` si falta `customerId`. Calcula `breakdown.monthlyStandard/monthlyAutopay` para mostrar el delta de ahorro y prellena `initialMethod` según `paymentData.type`.
+- **Decisiones clave**:
+  - `discriminatedUnion` por `autopay` (no por `payment.type`) en el schema raíz: si Autopay = OFF, los campos de tarjeta/ACH no son requeridos por Zod; cumple criterio "si Autopay OFF, no se piden campos".
+  - Luhn implementado inline en `draft-actions.ts` (no se agrega dependencia). Acepta 13–19 dígitos para cubrir Amex (15) y la mayoría de redes.
+  - Toggle visual custom (peer + checkbox) en lugar de un componente shadcn Switch — el registry `base-nova` instalado no expone `switch.tsx` y se evita agregar dependencia para una sola feature.
+  - `formatUsd` se duplica en el form porque `lib/orders/totals.ts` lleva `import "server-only"` y no se puede tocar desde un client component (el build falló al primer intento por arrastrar `pg`).
+- **Gotchas / aprendizajes**:
+  - Importar cualquier cosa de `lib/orders/totals.ts` desde un client component arrastra `lib/db/client.ts` → `pg` → módulo nativo `tls`, y rompe el bundle. Para utilidades de presentación (formato de moneda, etc.) crear/duplicar en el cliente o un módulo `lib/format/*` sin `server-only`.
+  - El campo `accountType` del schema ACH usa default `"checking"` desde el radio (`defaultChecked` en el primer ítem) — Zod lo valida con `enum`, no se acepta `undefined`.
+- **Verificación realizada**:
+  - `npm run build` → ✓ Compiled successfully; ruta `ƒ /checkout/payment` listada como dynamic.
+  - Verificación lógica del schema: `{ autopay: false }` pasa sin pedir `payment`; `{ autopay: true, payment: { type: "card", number: "4242424242424242", ... } }` pasa Luhn; números aleatorios fallan.
+- **Pendiente para próxima sesión**:
+  - T29 — Paso 7 Installation Schedule (date picker shadcn Calendar, Lun–Sáb 8–17h, action `scheduleInstallation`).
+
+## 2026-04-28 · T27 — Paso 5: Customer Info
+
+- **Estado final**: ✅ completada
+- **Archivos tocados**:
+  - `lib/orders/draft-actions.ts` — agregado `saveCustomerInfo` (Zod + superRefine para billing condicional). Upsert por `customers.email` con `onConflictDoUpdate`; redirige a `/checkout/payment`.
+  - `app/(public)/checkout/customer/page.tsx` — server component; precarga el customer existente (si `draft.customerId` ya está) y prellena la dirección de instalación desde `draft.installationAddress` o `draft.zipCode`.
+  - `components/checkout/customer-form.tsx` — client form con react-hook-form + zodResolver. Radio Mobile/Landline, toggle "Use different billing address" con sección condicional, propaga `fieldErrors` del server vía `form.setError`.
+- **Decisiones clave**:
+  - **Upsert por email** (en vez de "buscar y crear"): `customers.email` es UNIQUE (T05) → `insert(...).onConflictDoUpdate({ target: customers.email })` resuelve atomicamente el caso "email ya existe en otra orden". Si el cliente edita y vuelve a esta página, su customer registro se actualiza.
+  - **Validación dual** (cliente y servidor): el schema cliente y el del action son casi idénticos pero independientes — el cliente da feedback inmediato; el server es la fuente de verdad. El server propaga `fieldErrors` por path para que RHF los muestre inline si bypass del cliente.
+  - **Pre-fill de installation address**: si la dirección viene del path USPS-validado (T19/T23) ya tiene line1/city/state; si vino solo por ZIP, solo se prellena `zip` y el usuario completa el resto. Editable en ambos casos como pide la tarea.
+  - **Redirect al final**: `/checkout/payment` (T28). La ruta no existe aún; el redirect lanzará 404 hasta que T28 esté hecha. No bloquea el criterio de aceptación de T27 (que es la validación + persistencia).
+- **Gotchas / aprendizajes**:
+  - `zod.superRefine` permite hacer la validación condicional del billing sin romper el tipo. Usado tanto en cliente (re-parseo embebido) como en server.
+  - `form.setError` con paths anidados (`installationAddress.line1`) requiere que `fieldErrors` del server use `flatten().fieldErrors` con clave plana — para anidados habría que mapear manualmente. Por ahora los errores anidados llegan como serverError genérico; los del cliente cubren el 99% del caso.
+  - El componente `Input` de shadcn no acepta `forwardRef` adicional, pero como RHF usa `register({...})` que devuelve `{ref, onChange, onBlur, name}` y los pasamos vía spread, funciona sin tocar `Input`.
+- **Pendiente para próxima sesión**:
+  - **T28 — Payment Preference**. Toggle Autopay con tabs Card/ACH; persiste `payment_data` en plain text con el comentario `// SECURITY:` requerido. Próxima tarea.
+  - Cliente: decisión sobre cifrado de `payment_data` en reposo (sigue listada en pendientes).
+- **Verificación realizada**:
+  - `npm run build` → ✓ Compiled successfully (5.9s); ruta `/checkout/customer` listada como ƒ. TypeScript ok.
+
+## 2026-04-28 · T26 — Paso 4: Order Summary
+
+- **Estado final**: ✅ completada
+- **Archivos tocados**:
+  - `lib/orders/totals.ts` — nuevo. `calculateTotal(order, autopay?)` resuelve plan + add-ons desde DB y devuelve breakdown (`planPriceStandard`, `planPriceAutopay`, `addOnsMonthly`, `monthlyStandard`, `monthlyAutopay`, `monthlyTotal`). Default de `autopay` = `order.autopayEnabled` para que el helper sirva tanto al paso 4 (preview standard) como al 6 (recalcular tras toggle). Incluye `formatUsd`.
+  - `app/(public)/checkout/summary/page.tsx` — nueva. Server component con secciones plan, add-ons (link "Edit" → `/checkout/add-ons`), installation address, total. Botón Continue → `/checkout/customer`. Redirige a `/` si no hay draft, a `/checkout/plan` si falta plan.
+- **Decisiones clave**:
+  - El helper acepta el `Order` ya cargado en lugar del id; evita una segunda query a `orders` cuando la página ya hizo `getCurrentDraft()`. Si el caller solo tiene id, hace `getCurrentDraft()` o un select aparte.
+  - El total que se muestra en el paso 4 es **standard** (autopay aún no se ha elegido). El ahorro con autopay se anuncia como hint para anclar la decisión del paso 6.
+  - `installationAddress` puede ser `null` cuando USPS validó solo el ZIP (mock dev): se cae a "ZIP X. You'll confirm the full address in the next step." en vez de fallar.
+  - Reuso del patrón `<Button render={<Link />}>` ya usado en `checkout/plan` (button.tsx de shadcn base-nova soporta `render`).
+- **Gotchas / aprendizajes**:
+  - `plan.priceStandard` / `priceAutopay` y `addOn.price` vienen como `string` desde Drizzle (`numeric(10,2)` → string). `calculateTotal` los pasa por `Number()`; ya estaba documentado en T05.
+  - El `Order` type permite `addOnIds` undefined en teoría (jsonb nullable en runtime defensivo) — el helper guarda con `?? []`.
+- **Pendiente para próxima sesión**:
+  - T27 (Paso 5 — Customer Info): form con react-hook-form + Zod, action `saveCustomerInfo`. Próxima tarea.
+- **Verificación realizada**:
+  - `npm run build` → ✓ Compiled successfully (9.7s); aparece nueva ruta dinámica `/checkout/summary`. TypeScript ok.
+  - Lectura cruzada del helper desde dos contextos esperados (paso 4 standard + paso 6 con autopay variable): firma cubre ambos casos.
+
 ## 2026-04-28 · T25 — Paso 3: Add-ons
 
 - **Estado final**: ✅ completada (build verde; smoke visual pendiente de `npm run dev`).

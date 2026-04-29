@@ -342,7 +342,7 @@ Convenciones:
 - **Depende de**: T24
 
 ### T26 · Paso 4 — Order Summary
-- **Estado**: [ ]
+- **Estado**: [x]
 - **Objetivo**: Cliente confirma antes de checkout.
 - **Acciones**:
   1. Página `checkout/summary` con plan, add-ons, total estimado (suma de price_standard + sum de add-ons), dirección de instalación.
@@ -353,7 +353,7 @@ Convenciones:
 - **Depende de**: T25
 
 ### T27 · Paso 5 — Customer Info
-- **Estado**: [ ]
+- **Estado**: [x]
 - **Objetivo**: Datos personales.
 - **Acciones**:
   1. Form con react-hook-form + Zod: First/Last, Email, Phone, Phone Type (radio Mobile/Landline), Installation Address (pre-llenada y editable), toggle "Use different billing address" → fields condicionales.
@@ -363,7 +363,7 @@ Convenciones:
 - **Depende de**: T26
 
 ### T28 · Paso 6 — Payment Preference
-- **Estado**: [ ]
+- **Estado**: [x]
 - **Objetivo**: Captura de método de pago.
 - **Acciones**:
   1. Toggle Autopay ON/OFF; mostrar diferencia de precio (`price_autopay` vs `price_standard`).
@@ -376,7 +376,7 @@ Convenciones:
 - **Depende de**: T27
 
 ### T29 · Paso 7 — Installation Schedule
-- **Estado**: [ ]
+- **Estado**: [x]
 - **Objetivo**: Cliente elige fecha/hora.
 - **Acciones**:
   1. Date picker (shadcn `Calendar`) restringido a Lun–Sáb y futuro.

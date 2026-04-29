@@ -439,7 +439,7 @@ Convenciones:
 - **Depende de**: T12, T05
 
 ### T34 · Integrar notificaciones al submitOrder
-- **Estado**: [ ]
+- **Estado**: [x]
 - **Objetivo**: Disparar ambas en T30.
 - **Acciones**:
   1. En `submitOrder` llamar a T32 y T33 en paralelo con `Promise.allSettled` (que un fallo no bloquee el otro).

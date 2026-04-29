@@ -2,6 +2,19 @@
 
 Bitácora cronológica de sesiones de implementación. Cada entrada se anexa al cierre de una sesión por la skill `/implement` (ver `.claude/skills/implement/SKILL.md`).
 
+## 2026-04-29 · T34 — Integrar notificaciones al submitOrder
+
+- **Estado final**: ✅ completada
+- **Archivos tocados**: ninguno (verificación). La integración ya existía desde T30.
+- **Decisiones clave**:
+  - `Promise.allSettled([sendNewOrderEmail, triggerWebhook])` ya estaba en `lib/orders/draft-actions.ts:512-525`. Cada rama loguea por separado: `rejected` (excepción) vs `value.ok === false` (fallo controlado). El action retorna `{ ok: true }` siempre que la transacción de status pasara — ningún error de notificación bloquea la orden.
+  - `triggerWebhook` ya distingue "no configurado" (skipped, ok:true) de "fallo real" (ok:false), evitando ruido en logs cuando `webhook_url` no está en settings.
+- **Gotchas / aprendizajes**:
+  - Cuando T30 se implementó se anticipó el comportamiento de T34 — vale la pena revisar antes de codificar tareas dependientes; a veces ya están cubiertas.
+- **Verificación realizada**:
+  - `npm run build` → ✓ Compiled successfully, 27 rutas. Criterio de aceptación cumplido por inspección de código + build.
+  - Test manual con dummy webhook diferido a T31/T40 (smoke E2E con servicios externos).
+
 ## 2026-04-29 · T30 — Paso 8: Confirmation + commit
 
 - **Estado final**: ✅ completada

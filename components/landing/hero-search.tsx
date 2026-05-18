@@ -76,7 +76,7 @@ export function HeroSearch() {
         <div className="relative flex-1">
           <Search
             aria-hidden="true"
-            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+            className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-mahalo-blue-600"
           />
           <Input
             type="text"
@@ -90,14 +90,14 @@ export function HeroSearch() {
             }}
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? "hero-search-error" : undefined}
-            className="h-12 pl-9 text-base shadow-sm sm:text-base"
+            className="h-14 rounded-xl border-2 border-mahalo-navy-900/15 bg-white pl-11 text-base font-medium text-mahalo-navy-900 shadow-md placeholder:text-muted-foreground/80 hover:border-mahalo-navy-900/25 focus-visible:border-mahalo-blue-600 focus-visible:ring-mahalo-cyan-500/40 sm:text-base"
           />
         </div>
         <Button
           type="submit"
           variant="primary"
           size="lg"
-          className="h-12 px-6 text-sm font-semibold sm:px-7"
+          className="h-14 px-6 text-sm font-semibold shadow-[0_8px_24px_rgba(11,31,77,0.18)] sm:px-7"
           disabled={submitting}
         >
           {submitting ? "Checking…" : "Check Availability"}

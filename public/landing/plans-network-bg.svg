@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Abstract home internet network</title>
+  <desc id="desc">A premium abstract illustration of connected homes, fiber lines, and a soft blue network grid.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#061331"/>
+      <stop offset="0.48" stop-color="#0b1f4d"/>
+      <stop offset="1" stop-color="#1a66c9"/>
+    </linearGradient>
+    <radialGradient id="cyan" cx="70%" cy="34%" r="58%">
+      <stop offset="0" stop-color="#7fe3ee" stop-opacity="0.72"/>
+      <stop offset="0.42" stop-color="#3fd0e0" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#3fd0e0" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <rect width="1600" height="900" fill="url(#cyan)"/>
+  <g opacity="0.18" stroke="#ffffff" stroke-width="1">
+    <path d="M0 180H1600M0 360H1600M0 540H1600M0 720H1600"/>
+    <path d="M160 0V900M320 0V900M480 0V900M640 0V900M800 0V900M960 0V900M1120 0V900M1280 0V900M1440 0V900"/>
+  </g>
+  <g fill="none" stroke="#7fe3ee" stroke-width="3" opacity="0.72" filter="url(#glow)">
+    <path d="M225 585C420 420 545 690 755 500S1080 255 1345 360"/>
+    <path d="M290 340C470 260 610 390 760 320S1035 145 1265 220" opacity="0.56"/>
+  </g>
+  <g fill="#ffffff" opacity="0.92">
+    <path d="M284 568l72-58 72 58v98h-48v-58h-48v58h-48z"/>
+    <path d="M720 478l64-52 64 52v88h-43v-52h-42v52h-43z" opacity="0.86"/>
+    <path d="M1232 334l76-62 76 62v104h-50v-62h-52v62h-50z" opacity="0.78"/>
+  </g>
+  <g fill="#3fd0e0" filter="url(#glow)">
+    <circle cx="225" cy="585" r="8"/><circle cx="755" cy="500" r="10"/><circle cx="1345" cy="360" r="10"/>
+    <circle cx="290" cy="340" r="7"/><circle cx="760" cy="320" r="8"/><circle cx="1265" cy="220" r="8"/>
+  </g>
+  <g opacity="0.34" fill="#ffffff">
+    <circle cx="105" cy="126" r="2"/><circle cx="1490" cy="150" r="2"/><circle cx="1380" cy="760" r="2"/><circle cx="525" cy="770" r="2"/>
+  </g>
+</svg>

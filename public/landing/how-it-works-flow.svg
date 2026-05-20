@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 720" role="img" aria-labelledby="title desc">
+  <title id="title">Mahalo three step connection flow</title>
+  <desc id="desc">Address lookup, plan comparison, and a real agent call shown as a three step flow.</desc>
+  <defs>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#edf7ff"/>
+    </linearGradient>
+    <linearGradient id="navy" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1f4d"/>
+      <stop offset="1" stop-color="#2a5bc7"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="24" stdDeviation="24" flood-color="#0b1f4d" flood-opacity="0.16"/>
+    </filter>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="960" height="720" rx="48" fill="url(#panel)"/>
+  <g opacity="0.48" stroke="#d7e7f5" stroke-width="2">
+    <path d="M80 152H880M80 288H880M80 424H880M80 560H880"/>
+    <path d="M180 80V640M360 80V640M540 80V640M720 80V640"/>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="96" y="116" width="256" height="176" rx="28" fill="#ffffff"/>
+    <rect x="352" y="272" width="256" height="176" rx="28" fill="#ffffff"/>
+    <rect x="608" y="428" width="256" height="176" rx="28" fill="#ffffff"/>
+  </g>
+  <path d="M308 248C388 290 422 310 472 330" fill="none" stroke="#3fd0e0" stroke-width="8" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M564 404C640 446 676 466 728 486" fill="none" stroke="#3fd0e0" stroke-width="8" stroke-linecap="round" filter="url(#glow)"/>
+  <g>
+    <circle cx="146" cy="166" r="28" fill="url(#navy)"/><text x="146" y="176" text-anchor="middle" font-family="Inter, Arial" font-size="28" font-weight="800" fill="#fff">1</text>
+    <path d="M224 178l44 36 44-36v72h-30v-42h-28v42h-30z" fill="#0b1f4d"/>
+    <rect x="128" y="246" width="184" height="14" rx="7" fill="#d7e7f5"/>
+  </g>
+  <g>
+    <circle cx="402" cy="322" r="28" fill="url(#navy)"/><text x="402" y="332" text-anchor="middle" font-family="Inter, Arial" font-size="28" font-weight="800" fill="#fff">2</text>
+    <rect x="460" y="326" width="100" height="52" rx="14" fill="#eff6ff" stroke="#3fd0e0" stroke-width="3"/>
+    <rect x="482" y="344" width="56" height="8" rx="4" fill="#0b1f4d"/>
+    <rect x="482" y="362" width="36" height="8" rx="4" fill="#2a5bc7"/>
+    <rect x="430" y="386" width="132" height="18" rx="9" fill="#0b1f4d"/>
+  </g>
+  <g>
+    <circle cx="658" cy="478" r="30" fill="#0b1f4d"/><text x="658" y="489" text-anchor="middle" font-family="Inter, Arial" font-size="30" font-weight="800" fill="#fff">3</text>
+    <circle cx="752" cy="506" r="38" fill="#eff6ff" stroke="#3fd0e0" stroke-width="4" filter="url(#glow)"/>
+    <path d="M736 506c9 28 44 28 52 0" fill="none" stroke="#0b1f4d" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="740" cy="494" r="5" fill="#0b1f4d"/><circle cx="784" cy="494" r="5" fill="#0b1f4d"/>
+    <path d="M705 555c30-32 82-32 112 0" fill="none" stroke="#2a5bc7" stroke-width="10" stroke-linecap="round"/>
+  </g>
+</svg>

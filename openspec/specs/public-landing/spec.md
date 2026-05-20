@@ -51,42 +51,63 @@ A Stat Strip section SHALL appear directly below the hero with three to four hea
 
 ### Requirement: Plan Highlights anchor price and speed expectations
 
-A Plan Highlights section SHALL display three plan cards that anchor the visitor's price and speed expectations before they enter the providers grid.
+A Plan Highlights section SHALL display three premium plan cards that anchor the visitor's price and speed expectations before they enter the providers carousel.
 
 #### Scenario: Plan Highlights show three tiered cards
 - **WHEN** a visitor reaches the Plan Highlights section
 - **THEN** exactly three plan cards are rendered side by side on desktop and stacked on mobile
 - **AND** each card shows a download speed in Mbps or Gbps, a monthly price, and the provider name or logo
-- **AND** each card has a colored top stripe matching the provider's brand color
+- **AND** no card displays a provider-colored top border or top stripe
+- **AND** provider color appears only as a subtle contextual accent that does not dominate the card surface
 - **AND** a disclaimer "Indicative pricing — varies by address" is visible in or near the section
-- **AND** each card has a clear CTA that scrolls to or focuses the hero ZIP search
+- **AND** each card has a clear CTA that scrolls to or focuses the hero ZIP search while respecting reduced-motion preferences
 
 ### Requirement: Section order leads with value, then reasons
 
-The landing page sections SHALL appear in this exact order on `/`: Hero, Stat Strip, Plan Highlights, How It Works, Providers Grid, Why Mahalo, Testimonials, FAQ, Final CTA.
+The landing page sections SHALL appear in this exact order on `/`: Hero, Stat Strip, Plan Highlights, How It Works, Providers, Why Mahalo, Testimonials, FAQ, Final CTA.
 
 #### Scenario: Sections render in the prescribed order
 - **WHEN** a visitor loads `/`
-- **THEN** the DOM order of top-level sections under the page root is: Hero, Stat Strip, Plan Highlights, How It Works, Providers Grid, Why Mahalo, Testimonials, FAQ, Final CTA
+- **THEN** the DOM order of top-level sections under the page root is: Hero, Stat Strip, Plan Highlights, How It Works, Providers, Why Mahalo, Testimonials, FAQ, Final CTA
 - **AND** no other landing section is rendered between them
 
 ### Requirement: Existing sections receive visual refresh without behavior change
 
-The Why Mahalo, How It Works, Providers Grid, Testimonials, and FAQ sections SHALL keep their current content semantics and data sources but adopt the refreshed visual treatment (cyan icon glow, provider hover states without the top color border, testimonial avatars with star ratings, and clearer hierarchy).
+The Why Mahalo, How It Works, Providers, Testimonials, and FAQ sections SHALL keep their current content semantics and data sources but adopt the refreshed visual treatment (cyan icon glow, provider carousel motion, testimonial avatars with star ratings, and clearer hierarchy).
 
-#### Scenario: Providers grid still reads from the provider data source
-- **WHEN** the Providers Grid renders
+#### Scenario: Providers carousel still reads from the provider data source
+- **WHEN** the Providers section renders
 - **THEN** it lists only active providers from `listProviders()`
 - **AND** if no active providers exist, it shows the existing empty state message
-- **AND** the top color border per card is removed in favor of a hover treatment
+- **AND** the provider cards display as a carousel-like presentation rather than a static grid
+
+#### Scenario: Providers carousel auto-advances and can be controlled
+- **WHEN** active providers are available
+- **THEN** the Providers section displays three provider cards at a time on desktop
+- **AND** the visible set advances automatically in an infinite loop
+- **AND** the visitor can move backward or forward with accessible manual controls
+- **AND** the section uses a soft gradient background
 
 #### Scenario: Testimonials show avatar and rating
 - **WHEN** the Testimonials section renders
 - **THEN** each testimonial displays an avatar (image or initial), a star rating, the quote, and the author name
 
+#### Scenario: Testimonials gradient contrasts with Final CTA
+- **WHEN** a visitor compares the Testimonials section and the Final CTA section
+- **THEN** Testimonials uses a distinct gradient direction or tonal flow that reads as the opposite/complement of the Final CTA
+- **AND** the section does not simply reuse the same `bg-mahalo-cta` treatment unchanged
+- **AND** each quote, author, location, avatar or initial, and rating remains readable with WCAG AA contrast
+
 #### Scenario: How It Works emphasizes the human step
 - **WHEN** the How It Works section renders
-- **THEN** the third step ("we handle the rest") is visually emphasized over the other two (e.g., larger icon, accent color) to signal the human-agent differentiator
+- **THEN** the third step ("A real person calls you - no chatbots") is visually emphasized over the other two to signal the human-agent differentiator
+
+#### Scenario: How It Works changes local vertical image on step hover
+- **WHEN** a visitor hovers or focuses a How It Works step
+- **THEN** the visual preview changes to the local image associated with that step from `public/landing/steps`
+- **AND** each image is vertically framed and related to the step content
+- **AND** the preview container is taller and proportionate to the 3:4 image format
+- **AND** the textual steps remain sufficient if images fail to load
 
 ### Requirement: Final CTA repeats the address search
 
@@ -114,19 +135,115 @@ On mobile viewports, a sticky ZIP-search bar SHALL appear at the bottom of the s
 - **AND** it is announced as a landmark or labelled region to assistive tech
 - **AND** dismiss/hide behavior does not rely on hover-only interactions
 
-### Requirement: Site header adapts to dark hero
+### Requirement: Site header uses a solid logo-compatible surface
 
-The site header SHALL render with a transparent background while overlaying the dark hero, and SHALL switch to a solid (light) background once the visitor scrolls past the hero, so it remains legible over any section.
+The site header SHALL render with a solid light surface compatible with the unmodified logo asset. The logo SHALL NOT require rounded corners, padding, border, or a special surface variant to look correct while scrolling.
 
-#### Scenario: Header is transparent over the hero
-- **WHEN** the visitor is at the top of `/` with the hero fully visible
-- **THEN** the site header background is transparent
-- **AND** header text and links use light colors that meet WCAG AA contrast against the navy hero
+#### Scenario: Header is solid over the hero and while scrolling
+- **WHEN** the visitor loads `/` or scrolls through the landing page
+- **THEN** the site header background is a solid light surface that matches the logo asset background
+- **AND** header text and links use dark colors that meet WCAG AA contrast
+- **AND** navbar links remain legible without relying on transparent-over-hero styling
 
-#### Scenario: Header becomes solid after scrolling past hero
-- **WHEN** the visitor scrolls so the hero is no longer at the top of the viewport
-- **THEN** the site header background becomes the default light surface
-- **AND** header text and links revert to their default dark colors
+#### Scenario: Logo remains unmodified in navbar
+- **WHEN** the public navbar renders
+- **THEN** the Mahalo logo uses the default logo rendering without rounded-corner, border, padding, or surface treatment
+- **AND** the header link still has the accessible label for returning home
+
+
+### Requirement: Landing animations use CSS and Tailwind only
+
+The landing visual polish SHALL use CSS, Tailwind utilities, and the existing `tw-animate-css` setup for animation. It SHALL NOT add Remotion, Framer Motion, GSAP, Lottie, or any new runtime animation package for the landing UI.
+
+#### Scenario: Motion is implemented without new animation dependencies
+- **WHEN** the visual polish is implemented
+- **THEN** `package.json` dependencies and devDependencies do not gain a new animation library for this change
+- **AND** animated effects are expressed through CSS, Tailwind classes, existing utilities, or `tw-animate-css`
+
+#### Scenario: Motion is accessible
+- **WHEN** a visitor has `prefers-reduced-motion: reduce` enabled
+- **THEN** non-essential entrance, lift, slide, or decorative motion is disabled or reduced
+- **AND** all content remains visible and usable without relying on animation
+
+### Requirement: Plan Highlights uses premium image-backed presentation
+The Plan Highlights section SHALL use a professional background image or generated visual with an overlay treatment that supports the existing plan-card content. The section SHALL preserve the existing three-card plan structure, indicative-pricing disclaimer, and CTA behavior.
+
+#### Scenario: Plan section background supports legibility
+- **WHEN** a visitor reaches the Plan Highlights section
+- **THEN** the section displays a professional background image or generated visual related to home internet, connectivity, or household plan comparison
+- **AND** an overlay or gradient treatment ensures headings, body copy, cards, and disclaimers meet WCAG AA contrast
+- **AND** the image does not obscure or compete with plan speeds, prices, provider names, or CTAs
+
+#### Scenario: Plan cards feel premium and remain functional
+- **WHEN** the three plan cards render
+- **THEN** each card keeps speed, monthly price, provider name or logo, provider color accent, and the availability CTA
+- **AND** each card uses a polished surface treatment such as layered shadow, glass/blur, gradient border, or equivalent premium styling
+- **AND** each card remains readable on mobile and desktop
+- **AND** each card CTA still scrolls to or focuses the hero ZIP search while respecting reduced-motion preferences
+
+### Requirement: How It Works includes contextual visual support
+The How It Works section SHALL include a contextual visual treatment that reinforces the three-step journey from address lookup to plan selection to real human follow-up.
+
+#### Scenario: Steps visual matches the journey
+- **WHEN** a visitor views the How It Works section
+- **THEN** the section includes an image, generated visual, or composed visual element related to the steps being described
+- **AND** the visual reinforces address lookup, plan comparison, or human-agent follow-up rather than generic decoration
+- **AND** the third human-agent step remains visually emphasized
+
+#### Scenario: Steps section remains understandable without the image
+- **WHEN** the contextual visual fails to load or is ignored by assistive technology
+- **THEN** the three textual steps still communicate the full process
+- **AND** the visual does not replace required step text
+
+### Requirement: Testimonials use an inverse-gradient premium trust treatment
+The Testimonials section SHALL use a gradient treatment visually distinct from and directionally opposite to the Final CTA gradient while preserving quote readability and trust-focused presentation.
+
+#### Scenario: Testimonials gradient contrasts with Final CTA
+- **WHEN** a visitor compares the Testimonials section and the Final CTA section
+- **THEN** Testimonials uses a distinct gradient direction or tonal flow that reads as the opposite/complement of the Final CTA
+- **AND** the section does not simply reuse the same `bg-mahalo-cta` treatment unchanged
+
+#### Scenario: Testimonial cards remain trust-focused and readable
+- **WHEN** testimonial cards render over the gradient background
+- **THEN** each quote, author, location, avatar or initial, and rating remains readable with WCAG AA contrast
+- **AND** the card treatment feels premium but does not distract from the testimonial content
+
+### Requirement: Public navbar uses solid logo-compatible surface
+The public site navbar SHALL use a solid light surface compatible with the unmodified logo asset. The logo SHALL NOT require rounded corners, padding, border, or a special surface variant to look correct while scrolling.
+
+#### Scenario: Logo remains unmodified in navbar
+- **WHEN** the public navbar renders
+- **THEN** the Mahalo logo uses the default logo rendering without rounded-corner or border treatment
+- **AND** the navbar background is a solid light surface that matches the logo asset background
+- **AND** navbar links remain legible without relying on transparent-over-hero styling
+
+### Requirement: Plan cards avoid provider top borders
+The Plan Highlights cards SHALL NOT use a provider-colored top border or top stripe. Provider color MAY appear only as a subtle contextual accent that does not dominate the card surface.
+
+#### Scenario: Plan card has no top color stripe
+- **WHEN** Plan Highlights cards render
+- **THEN** no plan card displays a provider-colored top border or top stripe
+- **AND** the card hover/focus animation is slightly stronger than the baseline while still respecting reduced-motion preferences
+
+### Requirement: How It Works changes local vertical image on step hover
+The How It Works section SHALL display one local 3:4 vertical image per step from `public/landing/steps`, and the preview image SHALL change when the visitor hovers or focuses a step.
+
+#### Scenario: Step hover updates preview image
+- **WHEN** a visitor hovers or focuses a How It Works step
+- **THEN** the visual preview changes to the image associated with that step
+- **AND** each image is local, vertically framed, and related to the step content
+- **AND** the preview container is taller and proportionate to the 3:4 image format
+- **AND** the textual steps remain sufficient if images fail to load
+
+### Requirement: Providers display as a controlled carousel
+The Providers section SHALL display provider cards as a carousel-like presentation with three visible cards on desktop, automatic infinite advancement, and manual previous/next controls.
+
+#### Scenario: Providers carousel auto-advances and can be controlled
+- **WHEN** active providers are available
+- **THEN** the Providers section displays three provider cards at a time on desktop
+- **AND** the visible set advances automatically in an infinite loop
+- **AND** the visitor can move backward or forward with accessible manual controls
+- **AND** the section uses a soft gradient background
 
 ### Requirement: Brand palette is preserved and extended through utilities only
 

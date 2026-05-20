@@ -4,11 +4,11 @@ export type PublicNavItem = {
 };
 
 export const publicNavItems: PublicNavItem[] = [
-  { label: "Why us", href: "/#why" },
-  { label: "Providers", href: "/#providers" },
   { label: "How it works", href: "/#how" },
-  { label: "FAQ", href: "/#faq" },
+  { label: "Providers", href: "/#providers" },
+  { label: "Why us", href: "/#why" },
   { label: "Testimonials", href: "/#testimonials" },
+  { label: "FAQ", href: "/#faq" },
 ];
 
 export const publicFooterLinks: PublicNavItem[] = [

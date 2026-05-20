@@ -22,7 +22,6 @@ import { Input } from "@/components/ui/input";
  */
 export function MobileStickySearch() {
   const router = useRouter();
-  const [visible, setVisible] = useState(false);
   const [pastHero, setPastHero] = useState(false);
   const [finalCtaInView, setFinalCtaInView] = useState(false);
 
@@ -58,10 +57,7 @@ export function MobileStickySearch() {
     return () => obs.disconnect();
   }, []);
 
-  // Derived visibility
-  useEffect(() => {
-    setVisible(pastHero && !finalCtaInView);
-  }, [pastHero, finalCtaInView]);
+  const visible = pastHero && !finalCtaInView;
 
   const onSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -103,8 +99,7 @@ export function MobileStickySearch() {
     <div
       ref={barRef}
       aria-hidden={!visible}
-      // @ts-expect-error — inert is a valid HTML attribute; TS types lag behind
-      inert={!visible ? "" : undefined}
+      inert={!visible}
       aria-label="Quick internet availability search"
       role="complementary"
       className={[

@@ -35,12 +35,12 @@ export function Hero() {
         </span>
 
         {/* H1 — solid white, single visual unit */}
-        <h1 className="max-w-3xl text-4xl font-bold tracking-tight text-white md:text-5xl lg:text-6xl">
+        <h1 className="max-w-[20rem] text-3xl font-bold tracking-tight text-white sm:max-w-3xl sm:text-4xl md:text-5xl lg:text-6xl">
           Find the right internet plan for your home.
         </h1>
 
         {/* Supporting paragraph */}
-        <p className="max-w-2xl text-base text-white/85 md:text-lg">
+        <p className="max-w-[20rem] text-base text-white/85 sm:max-w-2xl md:text-lg">
           Compare top providers in your area in seconds — enter your ZIP code or
           address and we&apos;ll show every option available at your door.
         </p>
@@ -56,7 +56,7 @@ export function Hero() {
         </div>
 
         {/* Sub-CTA benefit strip */}
-        <ul className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm font-medium text-white">
+        <ul className="flex flex-wrap justify-center gap-x-3 gap-y-2 text-xs font-medium text-white sm:gap-x-6 sm:text-sm">
           {BENEFITS.map((b) => (
             <li key={b} className="flex items-center gap-1.5">
               <span className="text-mahalo-cyan-300" aria-hidden="true">
@@ -72,11 +72,11 @@ export function Hero() {
           <p className="mb-5 text-xs font-medium tracking-widest text-white/70 uppercase">
             Providers we work with
           </p>
-          <ul className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 md:gap-x-12">
+          <ul className="flex flex-wrap items-center justify-center gap-x-5 gap-y-3 sm:gap-x-8 md:gap-x-12">
             {PROVIDER_WORDMARKS.map((p) => (
               <li
                 key={p.name}
-                className={`text-base text-white/85 md:text-lg ${p.className}`}
+                className={`text-sm text-white/85 sm:text-base md:text-lg ${p.className}`}
               >
                 {p.name}
               </li>

@@ -15,25 +15,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-    env_file:
-      - .env
-    environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-mahalo}:${POSTGRES_PASSWORD:-mahalo}@db:5434/${POSTGRES_DB:-mahalo}
-      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
-    ports:
-      - "3000:3000"
-    volumes:
-      - uploads:/app/public/uploads
-
+      
 volumes:
   pg_data:
-  uploads:
+

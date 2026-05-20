@@ -1,44 +1,129 @@
+import Image from "next/image";
+
 import { HeroSearch } from "./hero-search";
+
+// PLACEHOLDER: text wordmarks until logo SVGs are generated and saved to
+// public/logos/. Active providers only (per business config).
+const PROVIDER_WORDMARKS = [
+  { name: "Brightspeed", className: "font-bold italic" },
+  { name: "EarthLink", className: "font-semibold" },
+  { name: "Frontier", className: "font-bold tracking-wide" },
+  { name: "Kinetic", className: "font-semibold italic" },
+  { name: "Optimum", className: "font-bold" },
+  { name: "Verizon Fios", className: "font-semibold tracking-tight" },
+] as const;
+
+const BENEFITS = [
+  "Plans starting at $29.99/mo",
+  "30-second availability match",
+  "No SSN required online",
+] as const;
 
 export function Hero() {
   return (
     <section
       id="hero"
-      className="relative isolate overflow-hidden bg-mahalo-gradient-soft border-b border-border/40"
+      className="bg-mahalo-hero relative isolate overflow-hidden"
+      style={{ minHeight: "600px" }}
     >
-      <WifiArcsDecoration />
+      <ConnectedHomeBackdrop />
 
-      <div className="relative mx-auto flex max-w-6xl flex-col items-start gap-6 px-6 py-20 md:py-28">
-        <span className="eyebrow">Mahalo Enterprise</span>
-        <h1 className="max-w-3xl text-4xl font-bold tracking-tight text-mahalo-navy-900 md:text-5xl lg:text-6xl">
+      <div className="relative z-10 mx-auto flex max-w-6xl flex-col items-center gap-6 px-6 py-20 text-center md:py-28 lg:py-32">
+        {/* Eyebrow — white text on a subtle translucent chip */}
+        <span className="inline-block rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-xs font-semibold tracking-widest text-white uppercase backdrop-blur-sm">
+          Internet plans in your area
+        </span>
+
+        {/* H1 — solid white, single visual unit */}
+        <h1 className="max-w-3xl text-4xl font-bold tracking-tight text-white md:text-5xl lg:text-6xl">
           Find the right internet plan for your home.
         </h1>
-        <p className="max-w-2xl text-base text-muted-foreground md:text-lg">
-          Compare top providers in your area in seconds. Just enter your ZIP
-          code or address — we&apos;ll handle the rest.
+
+        {/* Supporting paragraph */}
+        <p className="max-w-2xl text-base text-white/85 md:text-lg">
+          Compare top providers in your area in seconds — enter your ZIP code or
+          address and we&apos;ll show every option available at your door.
         </p>
 
-        <HeroSearch />
+        {/* Price anchor — the single cyan accent in the hero */}
+        <p className="text-sm font-semibold text-mahalo-cyan-300">
+          Plans starting at $29.99/mo — no surprise fees
+        </p>
+
+        {/* Search — hero variant */}
+        <div className="w-full max-w-xl">
+          <HeroSearch variant="hero" />
+        </div>
+
+        {/* Sub-CTA benefit strip */}
+        <ul className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm font-medium text-white">
+          {BENEFITS.map((b) => (
+            <li key={b} className="flex items-center gap-1.5">
+              <span className="text-mahalo-cyan-300" aria-hidden="true">
+                ✓
+              </span>
+              {b}
+            </li>
+          ))}
+        </ul>
+
+        {/* Provider wordmark strip */}
+        <div className="mt-6 w-full border-t border-white/15 pt-8">
+          <p className="mb-5 text-xs font-medium tracking-widest text-white/70 uppercase">
+            Providers we work with
+          </p>
+          <ul className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 md:gap-x-12">
+            {PROVIDER_WORDMARKS.map((p) => (
+              <li
+                key={p.name}
+                className={`text-base text-white/85 md:text-lg ${p.className}`}
+              >
+                {p.name}
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
+
+      {/* Sentinel for IntersectionObserver (header + mobile sticky bar) */}
+      <div id="hero-end-sentinel" aria-hidden="true" />
     </section>
   );
 }
 
-function WifiArcsDecoration() {
+function ConnectedHomeBackdrop() {
+  // Wider, softer radial mask — opacity tapers very gradually so there's no
+  // perceptible perimeter. The hero base now matches the image's left-edge
+  // tonal curve, so even a slow fade reads as seamless.
+  const radialMask =
+    "radial-gradient(ellipse 70% 85% at 70% 55%, rgba(0,0,0,1) 0%, rgba(0,0,0,0.9) 40%, rgba(0,0,0,0.55) 65%, rgba(0,0,0,0.2) 85%, rgba(0,0,0,0) 100%)";
+
   return (
-    <svg
+    <div
       aria-hidden="true"
-      viewBox="0 0 600 600"
-      className="pointer-events-none absolute -right-24 -bottom-24 h-[480px] w-[480px] text-mahalo-blue-600 opacity-[0.07] md:-right-12 md:-bottom-16 md:h-[560px] md:w-[560px]"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="14"
-      strokeLinecap="round"
+      className="pointer-events-none absolute right-0 bottom-0 z-0 hidden h-full w-3/5 select-none md:block lg:w-1/2"
     >
-      <circle cx="300" cy="500" r="36" fill="currentColor" stroke="none" />
-      <path d="M170 420 Q300 290 430 420" />
-      <path d="M110 380 Q300 170 490 380" />
-      <path d="M50 340 Q300 50 550 340" />
-    </svg>
+      <Image
+        src="/hero/connected-home.png"
+        alt=""
+        fill
+        priority
+        sizes="(min-width: 768px) 60vw, 0vw"
+        className="object-cover object-bottom-right opacity-90"
+        style={{
+          maskImage: radialMask,
+          WebkitMaskImage: radialMask,
+        }}
+      />
+      {/* Soft navy tint over the bright window areas so the warm lights don't
+          fight the text contrast — kept light so the cyan WiFi arcs survive. */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 55% 65% at 65% 65%, rgba(11,31,77,0.15) 0%, rgba(11,31,77,0.3) 60%, rgba(11,31,77,0.5) 100%)",
+        }}
+      />
+    </div>
   );
 }

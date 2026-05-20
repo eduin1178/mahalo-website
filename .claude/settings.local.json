@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bash \"d:\\\\EDUNET\\\\MAHALO\\\\mahalo-enrterprise\\\\mahalo-website\\\\.claude\\\\skills\\\\gpt-image-2\\\\scripts\\\\gen.sh\" --prompt \"A cinematic editorial illustration of a modern suburban American home at blue-hour dusk, viewed from a low three-quarter angle. Deep navy night sky \\(#0b1f4d\\) with subtle stars and atmospheric haze. Warm amber and golden light spills from the windows of a contemporary two-story house, suggesting a connected family inside streaming and browsing. Soft, stylized translucent cyan WiFi signal arcs \\(#3fd0e0\\) radiate gently from the rooftop antenna, fading into the navy sky, with a faint cyan glow halo around the house. Quiet residential street in the foreground with one softly lit parked car. Painterly, modern editorial illustration style with soft gradients, gentle film grain, slight bokeh. Color palette dominated by deep navy \\(#0b1f4d\\), warm amber window glow, and electric cyan accents \\(#3fd0e0\\). Composition slightly weighted to the right of the frame, with the left edge naturally fading into deep navy darkness so the image composites cleanly into a navy hero background. No text, no logos, no people visible, no oversaturated colors. Aspect ratio landscape, high detail, premium tech-brand aesthetic.\" --out \"d:\\\\EDUNET\\\\MAHALO\\\\mahalo-enrterprise\\\\mahalo-website\\\\public\\\\hero\\\\connected-home.png\" --timeout-sec 300)"
+    ]
+  }
+}

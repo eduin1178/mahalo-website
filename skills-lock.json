@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "gpt-image-2": {
+      "source": "agentspace-so/agent-skills",
+      "sourceType": "github",
+      "skillPath": "gpt-image-2/SKILL.md",
+      "computedHash": "d539380caff7d3ec09ddc8ce7cac4f031e54689d466c3dd5cf2850419f56b969"
+    }
+  }
+}

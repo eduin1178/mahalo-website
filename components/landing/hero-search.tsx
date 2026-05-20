@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 
 type FieldError = string | null;
 
+export type HeroSearchVariant = "hero" | "final-cta";
+
 function classifyInput(raw: string):
   | { kind: "empty" }
   | { kind: "invalid-zip"; message: string }
@@ -35,12 +37,23 @@ function classifyInput(raw: string):
   return { kind: "address", address: value };
 }
 
-export function HeroSearch() {
+interface HeroSearchProps {
+  /**
+   * "hero"      — white input on the dark navy hero (default)
+   * "final-cta" — white input over the navy→cyan gradient Final CTA section
+   */
+  variant?: HeroSearchVariant;
+  /** Unique suffix for aria-describedby IDs when the component appears more than once on the page. */
+  idSuffix?: string;
+}
+
+export function HeroSearch({ variant = "hero", idSuffix = "" }: HeroSearchProps) {
   const router = useRouter();
   const [value, setValue] = useState("");
   const [error, setError] = useState<FieldError>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Submit handler is identical across variants — single source of truth.
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const result = classifyInput(value);
@@ -64,6 +77,20 @@ export function HeroSearch() {
     }
     router.push(`/checkout?${params.toString()}`);
   };
+
+  const errorId = `hero-search-error${idSuffix ? `-${idSuffix}` : ""}`;
+
+  // Variant-specific class tokens. Both share the white bg / dark text input so
+  // they are legible over any dark background (navy or navy→cyan gradient).
+  const inputCls =
+    variant === "hero"
+      ? "h-14 rounded-xl border-2 border-white/20 bg-white pl-11 text-base font-medium text-mahalo-navy-900 shadow-md placeholder:text-mahalo-navy-900/40 hover:border-white/40 focus-visible:border-mahalo-cyan-500 focus-visible:ring-mahalo-cyan-500/40 sm:text-base"
+      : "h-14 rounded-xl border-2 border-white/30 bg-white pl-11 text-base font-medium text-mahalo-navy-900 shadow-md placeholder:text-mahalo-navy-900/40 hover:border-white/50 focus-visible:border-mahalo-cyan-500 focus-visible:ring-mahalo-cyan-500/40 sm:text-base";
+
+  const hintCls =
+    variant === "hero"
+      ? "mt-2 text-xs text-white/50"
+      : "mt-2 text-xs text-white/60";
 
   return (
     <form
@@ -89,8 +116,8 @@ export function HeroSearch() {
               if (error) setError(null);
             }}
             aria-invalid={error ? true : undefined}
-            aria-describedby={error ? "hero-search-error" : undefined}
-            className="h-14 rounded-xl border-2 border-mahalo-navy-900/15 bg-white pl-11 text-base font-medium text-mahalo-navy-900 shadow-md placeholder:text-muted-foreground/80 hover:border-mahalo-navy-900/25 focus-visible:border-mahalo-blue-600 focus-visible:ring-mahalo-cyan-500/40 sm:text-base"
+            aria-describedby={error ? errorId : undefined}
+            className={inputCls}
           />
         </div>
         <Button
@@ -105,14 +132,14 @@ export function HeroSearch() {
       </div>
       {error ? (
         <p
-          id="hero-search-error"
+          id={errorId}
           role="alert"
-          className="mt-2 text-sm font-medium text-destructive"
+          className="mt-2 text-sm font-medium text-red-400"
         >
           {error}
         </p>
       ) : (
-        <p className="mt-2 text-xs text-muted-foreground">
+        <p className={hintCls}>
           We&apos;ll match you with providers serving your area in seconds.
         </p>
       )}

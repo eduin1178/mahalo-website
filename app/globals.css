@@ -131,3 +131,112 @@
     color: var(--color-mahalo-blue-600);
   }
 }
+
+/*
+ * ─── Redesign-public-landing custom utilities ────────────────────────────────
+ * Declared with Tailwind v4's @utility directive so they are always emitted
+ * even when referenced only from new components. Do NOT mutate the --mahalo-*
+ * tokens above; these utilities are purely additive.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
+@utility bg-mahalo-hero {
+  /* Base — color + cyan/blue glows + vertical tonal curve that matches the
+     hero illustration's left edge so the masked image dissolves seamlessly. */
+  position: relative;
+  background-color: #0b1f4d;
+  background-image:
+    radial-gradient(
+      ellipse 70% 55% at 78% 30%,
+      rgba(63, 208, 224, 0.18) 0%,
+      transparent 65%
+    ),
+    radial-gradient(
+      ellipse 60% 60% at 18% 80%,
+      rgba(42, 91, 199, 0.2) 0%,
+      transparent 65%
+    ),
+    linear-gradient(
+      180deg,
+      #142a55 0%,
+      #0e2350 25%,
+      #0b1f4d 55%,
+      #07173a 85%,
+      #04102d 100%
+    );
+
+  /* Vertical hairline pattern restricted to the center via a horizontal mask.
+     Lives in a pseudo-element so its visibility can be controlled
+     independently from the base background. Sits above the illustration
+     (z-index 5) so it "stitches" the seam where the masked image fades into
+     the navy zone. Fades to fully transparent at both ends. */
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    background-image:
+      repeating-linear-gradient(
+        90deg,
+        transparent 0,
+        transparent 31px,
+        rgba(255, 255, 255, 0.07) 31px,
+        rgba(255, 255, 255, 0.07) 32px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        transparent 0,
+        transparent 95px,
+        rgba(63, 208, 224, 0.1) 95px,
+        rgba(63, 208, 224, 0.1) 96px
+      );
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent 0%,
+      transparent 12%,
+      rgba(0, 0, 0, 1) 38%,
+      rgba(0, 0, 0, 1) 62%,
+      transparent 88%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to right,
+      transparent 0%,
+      transparent 12%,
+      rgba(0, 0, 0, 1) 38%,
+      rgba(0, 0, 0, 1) 62%,
+      transparent 88%,
+      transparent 100%
+    );
+  }
+}
+
+@utility bg-mahalo-cta {
+  background-image: linear-gradient(
+    135deg,
+    #0b1f4d 0%,
+    #142e6e 45%,
+    #2a5bc7 80%,
+    #3fd0e0 100%
+  );
+}
+
+@utility glow-cyan {
+  box-shadow:
+    0 0 0 4px rgba(63, 208, 224, 0.15),
+    0 0 18px rgba(63, 208, 224, 0.12);
+}
+
+@utility glow-cyan-sm {
+  box-shadow:
+    0 0 0 2px rgba(63, 208, 224, 0.12),
+    0 0 10px rgba(63, 208, 224, 0.1);
+}
+
+@utility glass-surface {
+  background-color: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}

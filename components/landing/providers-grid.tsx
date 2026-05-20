@@ -26,11 +26,18 @@ export async function ProvidersGrid() {
         ) : (
           <ul className="mt-12 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
             {active.map((p) => (
+              // Always-on top border removed per design D1/7.1.
+              // Brand color revealed on hover via CSS custom property + ::before overlay.
               <li
                 key={p.id}
-                className="flex h-28 items-center justify-center rounded-xl border border-border bg-background px-4 shadow-sm"
-                style={{ borderTopColor: p.primaryColor, borderTopWidth: 4 }}
+                className="group relative flex h-28 items-center justify-center overflow-hidden rounded-xl border border-border bg-background px-4 shadow-sm transition-shadow hover:shadow-md"
               >
+                {/* Hover top-border: brand color revealed on hover only */}
+                <span
+                  className="pointer-events-none absolute inset-x-0 top-0 h-1 origin-left scale-x-0 transition-transform duration-200 group-hover:scale-x-100"
+                  style={{ backgroundColor: p.primaryColor ?? "#2a5bc7" }}
+                  aria-hidden="true"
+                />
                 {p.logoUrl ? (
                   <Image
                     src={p.logoUrl}

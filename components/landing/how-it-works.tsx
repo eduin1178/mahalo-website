@@ -4,18 +4,22 @@ const steps = [
     title: "Tell us where you live",
     description:
       "Enter your ZIP or full address. We check every provider that covers your home.",
+    emphasized: false,
   },
   {
     n: 2,
     title: "Pick a plan",
     description:
       "Compare speeds, prices and add-ons side by side. Choose what fits your household.",
+    emphasized: false,
   },
   {
     n: 3,
-    title: "We handle the rest",
+    // Tightened to lead with the human-agent differentiator
+    title: "A real person calls you — no chatbots",
     description:
-      "An agent calls to confirm the details, schedules your install, and gets you online.",
+      "An agent confirms the details, schedules your install, and gets you online. Humans only.",
+    emphasized: true,
   },
 ];
 
@@ -31,10 +35,23 @@ export function HowItWorks() {
         <ol className="mt-12 grid gap-8 md:grid-cols-3">
           {steps.map((s) => (
             <li key={s.n} className="relative">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-mahalo-navy-900 text-lg font-semibold text-white shadow-md">
+              {/* Step 3 gets larger number bubble + cyan glow to signal the human-agent differentiator */}
+              <div
+                className={
+                  s.emphasized
+                    ? "glow-cyan flex h-16 w-16 items-center justify-center rounded-full bg-mahalo-navy-900 text-xl font-bold text-white shadow-md ring-2 ring-mahalo-cyan-500/40"
+                    : "flex h-12 w-12 items-center justify-center rounded-full bg-mahalo-navy-900 text-lg font-semibold text-white shadow-md"
+                }
+              >
                 {s.n}
               </div>
-              <h3 className="mt-5 text-lg font-semibold text-mahalo-navy-900">
+              <h3
+                className={
+                  s.emphasized
+                    ? "mt-5 text-xl font-bold text-mahalo-navy-900"
+                    : "mt-5 text-lg font-semibold text-mahalo-navy-900"
+                }
+              >
                 {s.title}
               </h3>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">

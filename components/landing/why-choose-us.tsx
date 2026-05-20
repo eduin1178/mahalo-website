@@ -46,7 +46,7 @@ export function WhyChooseUs() {
               key={title}
               className="rounded-xl border border-border bg-surface p-6 shadow-sm"
             >
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-mahalo-cyan-300/20 text-mahalo-blue-600">
+              <div className="glow-cyan-sm flex h-11 w-11 items-center justify-center rounded-full bg-mahalo-cyan-300/20 text-mahalo-blue-600">
                 <Icon className="h-5 w-5" strokeWidth={1.75} />
               </div>
               <h3 className="mt-4 text-lg font-semibold text-mahalo-navy-900">

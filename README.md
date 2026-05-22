@@ -6,6 +6,8 @@ Stack: Next.js 16 (App Router) · Tailwind v4 · shadcn/ui · PostgreSQL · Driz
 
 Documentación canónica en [`specs/`](specs/). Para implementar tareas usar la skill `/implement` (ver [`AGENTS.md`](AGENTS.md)).
 
+Para desplegar a producción (Dokploy + Docker Hub + Cloudflare R2) consultar [`docs/deployment.md`](docs/deployment.md).
+
 ## Local development
 
 ### Option A — Docker (recommended)

@@ -1,3 +1,12 @@
+# =============================================================================
+# DEVELOPMENT ONLY — DO NOT USE IN PRODUCTION
+# =============================================================================
+# This compose file exists to run a local Postgres for development.
+# Production deploys use Dokploy: the database is a Dokploy-native Postgres
+# service and the application image is pulled from Docker Hub.
+# See docs/deployment.md for the production deployment runbook.
+# =============================================================================
+
 services:
   db:
     image: postgres:16-alpine

@@ -6,6 +6,7 @@ build
 coverage
 .git
 .gitignore
+.github
 .env
 .env.*
 !.env.example
@@ -13,9 +14,10 @@ Dockerfile
 .dockerignore
 docker-compose.yml
 docker-compose.*.yml
-README.md
+*.md
 docs
 specs
+openspec
 .claude
 .vscode
 .idea

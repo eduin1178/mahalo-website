@@ -1,8 +1,5 @@
 "use server";
 
-import { mkdir, writeFile, unlink } from "node:fs/promises";
-import path from "node:path";
-
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -10,6 +7,7 @@ import { z } from "zod";
 import { getDb } from "@/lib/db/client";
 import { providers, type Provider } from "@/lib/db/schema";
 import { requireRole } from "@/lib/clerk/require-role";
+import { deleteObject, getPublicUrl, putObject } from "@/lib/storage";
 
 const HEX_COLOR = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
 
@@ -154,6 +152,20 @@ export async function toggleProviderActive(
   return { ok: true, data: { id: id.data, isActive: next } };
 }
 
+function extractKeyFromUrl(value: string): string | null {
+  const withoutQuery = value.split("?")[0] ?? value;
+  const legacyPrefix = "/uploads/";
+  if (withoutQuery.startsWith(legacyPrefix)) {
+    return withoutQuery.slice(legacyPrefix.length) || null;
+  }
+  try {
+    const parsed = new URL(withoutQuery);
+    return parsed.pathname.replace(/^\/+/, "") || null;
+  } catch {
+    return null;
+  }
+}
+
 const ALLOWED_LOGO_TYPES: Record<string, string> = {
   "image/png": "png",
   "image/jpeg": "jpg",
@@ -192,28 +204,20 @@ export async function uploadProviderLogo(
     .limit(1);
   if (!existing) return { ok: false, error: "Provider not found" };
 
-  const dir = path.join(process.cwd(), "public", "uploads", "providers");
-  await mkdir(dir, { recursive: true });
-
   const filename = `${id}.${ext}`;
-  const fullPath = path.join(dir, filename);
+  const key = `providers/${filename}`;
   const bytes = Buffer.from(await file.arrayBuffer());
-  await writeFile(fullPath, bytes);
 
-  // Remove previous logo if extension changed (different filename).
+  await putObject({ key, body: bytes, contentType: file.type });
+
   if (existing.logoUrl) {
-    const prevName = path.basename(existing.logoUrl);
-    if (prevName !== filename) {
-      const prevPath = path.join(dir, prevName);
-      try {
-        await unlink(prevPath);
-      } catch {
-        // ignore: missing or in use
-      }
+    const prevKey = extractKeyFromUrl(existing.logoUrl);
+    if (prevKey && prevKey !== key) {
+      await deleteObject(prevKey);
     }
   }
 
-  const logoUrl = `/uploads/providers/${filename}?v=${Date.now()}`;
+  const logoUrl = `${getPublicUrl(key)}?v=${Date.now()}`;
   await db
     .update(providers)
     .set({ logoUrl, updatedAt: new Date() })

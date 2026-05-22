@@ -1,14 +1,26 @@
 import { listProviders } from "@/lib/providers/queries";
+import type { Provider } from "@/lib/db/schema";
 
 import { ProvidersCarousel } from "./providers-carousel";
 
+async function safeListProviders(): Promise<Provider[]> {
+  try {
+    return await listProviders();
+  } catch (err) {
+    // Tolerate prerender-time DB unavailability (e.g. CI image build with no
+    // DATABASE_URL). ISR will revalidate against the real DB at runtime.
+    console.warn("ProvidersGrid: listProviders failed, falling back to empty list:", err);
+    return [];
+  }
+}
+
 export async function ProvidersGrid() {
-  const all = await listProviders();
+  const all = await safeListProviders();
   const active = all.filter((p) => p.isActive);
 
   return (
     <section id="providers" className="relative overflow-hidden border-b border-border/40 bg-mahalo-providers-soft">
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-mahalo-cyan-500/50 to-transparent" aria-hidden="true" />
+      <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-mahalo-cyan-500/50 to-transparent" aria-hidden="true" />
       <div className="mx-auto max-w-6xl px-6 py-20 md:py-28">
         <span className="eyebrow">Available providers</span>
         <h2 className="mt-2 max-w-2xl text-3xl font-bold tracking-tight text-mahalo-navy-900 md:text-4xl">

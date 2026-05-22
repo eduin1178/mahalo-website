@@ -56,7 +56,7 @@ The deployed Dokploy application service SHALL receive the following environment
 - **THEN** the application SHALL fail fast on the first DB access with a clear error indicating the missing variable, rather than silently using a default.
 
 ### Requirement: Manual database migration runbook
-Database migrations SHALL NOT run automatically as part of the deploy pipeline. The repository SHALL document a runbook in `docs/deployment.md` describing how to expose the Dokploy Postgres port temporarily, run `npm run db:migrate` from a local machine against that exposed port using a one-off `DATABASE_URL`, and revert the port exposure afterward.
+Database migrations SHALL NOT run automatically as part of the deploy pipeline. The repository SHALL document a runbook in `docs/deployment.md` describing how to expose the Dokploy Postgres port temporarily, run `pnpm run db:migrate` from a local machine against that exposed port using a one-off `DATABASE_URL`, and revert the port exposure afterward.
 
 #### Scenario: Operator follows the runbook
 - **WHEN** an operator opens `docs/deployment.md`

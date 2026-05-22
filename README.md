@@ -32,18 +32,18 @@ Requires Node 22+ and a running Postgres.
 
 ```bash
 cp .env.example .env
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 ## Useful scripts
 
 | Command | What it does |
 |---|---|
-| `npm run dev` | Next.js dev server (Turbopack). |
-| `npm run build` | Production build (Next standalone output). |
-| `npm run start` | Run the production server. |
-| `npm run lint` | ESLint. |
+| `pnpm run dev` | Next.js dev server (Turbopack). |
+| `pnpm run build` | Production build (Next standalone output). |
+| `pnpm run start` | Run the production server. |
+| `pnpm run lint` | ESLint. |
 
 ## Project layout
 

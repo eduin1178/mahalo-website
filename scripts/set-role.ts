@@ -2,8 +2,8 @@
  * Set a Clerk user's admin-panel role from the command line.
  *
  * Usage:
- *   npm run set-role -- <email> <admin|agent>
- *   npm run set-role -- eduin1178@gmail.com admin
+ *   pnpm run set-role -- <email> <admin|agent>
+ *   pnpm run set-role -- eduin1178@gmail.com admin
  *
  * Reads CLERK_SECRET_KEY from the environment.
  */
@@ -17,7 +17,7 @@ async function main() {
   const [email, roleArg] = process.argv.slice(2);
 
   if (!email || !roleArg) {
-    console.error("Usage: npm run set-role -- <email> <admin|agent>");
+    console.error("Usage: pnpm run set-role -- <email> <admin|agent>");
     process.exit(1);
   }
   if (!VALID_ROLES.includes(roleArg as Role)) {

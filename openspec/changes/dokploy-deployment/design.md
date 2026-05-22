@@ -10,7 +10,7 @@ El objetivo es llegar a un despliegue en **Dokploy** que cumpla tres invariantes
 Restricciones / stakeholders:
 - Next.js 16 ya está configurado con `output: "standalone"` — el `Dockerfile` actual sirve.
 - El único punto del código que hoy escribe en `public/uploads` es `lib/providers/actions.ts → uploadProviderLogo` (validado con grep).
-- Las migraciones se ejecutan vía `npm run db:migrate` con `tsx`. El usuario aceptó hacerlas **manualmente** vía exposición temporal del puerto Postgres.
+- Las migraciones se ejecutan vía `pnpm run db:migrate` con `tsx`. El usuario aceptó hacerlas **manualmente** vía exposición temporal del puerto Postgres.
 - El operador y desarrollador inicial es la misma persona (eduin1178@gmail.com); el procedimiento debe ser ejecutable por una sola persona sin equipo de plataforma.
 
 ## Goals / Non-Goals
@@ -87,7 +87,7 @@ El cliente S3 se construye una sola vez (singleton) lazily, validando variables 
 **Por qué**: renombrarlo a `docker-compose.dev.yml` rompe el reflejo `docker compose up` para devs y no aporta seguridad real (Dokploy nunca lee ese archivo de todos modos). Un comentario claro arriba alcanza.
 
 ### D8. Migraciones manuales con puerto temporal
-**Decisión**: el operador habilita el puerto público en el servicio Postgres de Dokploy, construye una URL `postgres://user:pwd@<dokploy-host>:<port>/db`, exporta `DATABASE_URL` y corre `npm run db:migrate` desde su máquina, y luego cierra el puerto.
+**Decisión**: el operador habilita el puerto público en el servicio Postgres de Dokploy, construye una URL `postgres://user:pwd@<dokploy-host>:<port>/db`, exporta `DATABASE_URL` y corre `pnpm run db:migrate` desde su máquina, y luego cierra el puerto.
 
 **Por qué**: el usuario lo aceptó explícitamente. Es simple, no requiere infra extra (no jump host, no túnel SSH), y la ventana de exposición la controla el operador. El riesgo lo mitigamos con (a) password fuerte generado al provisionar Postgres, (b) checklist explícito que termina con "verificar que el puerto vuelve a estar cerrado".
 
@@ -136,7 +136,7 @@ Esta sección describe el orden de adopción del cambio, asumiendo que el repo y
 5. **Hacer merge a `master`** → primer build, primera imagen en Docker Hub.
 6. **Crear proyecto en Dokploy**: servicio Postgres (sin puerto público) + servicio App (`tu-usuario/mahalo-website:latest`).
 7. **Configurar env vars en Dokploy app** + obtener URL del webhook → guardarla como GitHub Secret `DOKPLOY_DEPLOY_WEBHOOK`.
-8. **Ejecutar migración inicial**: seguir runbook → exponer puerto, correr `npm run db:migrate`, cerrar puerto.
+8. **Ejecutar migración inicial**: seguir runbook → exponer puerto, correr `pnpm run db:migrate`, cerrar puerto.
 9. **Trigger primer deploy** en Dokploy (manual). Verificar que la app levanta y conecta a Postgres + R2.
 10. A partir de acá: cada push a `master` dispara build → push → webhook → redeploy automático.
 

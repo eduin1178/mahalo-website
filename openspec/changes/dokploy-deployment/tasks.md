@@ -25,13 +25,13 @@
 ## 4. Documentación
 
 - [x] 4.1 Crear `docs/deployment.md` con secciones: (a) Arquitectura, (b) Pre-requisitos externos (Cloudflare R2, Docker Hub, Dokploy), (c) Variables de entorno con tabla (nombre · dónde se configura · de dónde se obtiene · ejemplo), (d) Runbook primer deploy, (e) Runbook redeploy normal, (f) Runbook migraciones manuales con puerto temporal, (g) Runbook rollback.
-- [x] 4.2 En la sección de migraciones, incluir checklist explícito: habilitar puerto público en Postgres de Dokploy → construir `DATABASE_URL=postgres://user:pwd@host:port/db` → `DATABASE_URL=... npm run db:migrate` → verificar → deshabilitar puerto público → confirmar que el puerto cerró.
+- [x] 4.2 En la sección de migraciones, incluir checklist explícito: habilitar puerto público en Postgres de Dokploy → construir `DATABASE_URL=postgres://user:pwd@host:port/db` → `DATABASE_URL=... pnpm run db:migrate` → verificar → deshabilitar puerto público → confirmar que el puerto cerró.
 - [x] 4.3 En la sección de rollback, documentar el flujo de cambiar la imagen a `sha-<commit>` previo en el panel de Dokploy.
 - [x] 4.4 Linkear desde `README.md` la nueva guía (`docs/deployment.md`).
 
 ## 5. Verificación local
 
-- [x] 5.1 `npm run build` corre sin errores tras el refactor de uploads y los cambios en `next.config.ts`. _(verificado vía `tsc --noEmit` — type-check limpio; el `next build` real lo corre el primer push a master)_.
+- [x] 5.1 `pnpm run build` corre sin errores tras el refactor de uploads y los cambios en `next.config.ts`. _(verificado vía `tsc --noEmit` — type-check limpio; el `next build` real lo corre el primer push a master)_.
 - [ ] 5.2 `docker build .` produce una imagen que NO contiene `public/uploads`, `.env*`, `node_modules` (verificar con `docker run --rm <image> ls -la /app && ls -la /app/public`). _(diferido — lo verifica el primer build de GitHub Actions)_.
 - [ ] 5.3 `docker run` con variables dummy NO crashea al arrancar; el crash en R2 ocurre recién al primer `uploadProviderLogo`, no al boot. _(diferido — se valida en el primer deploy a Dokploy)_.
 - [ ] 5.4 Smoke local con credenciales reales de R2: subir un logo desde admin/providers y confirmar que (a) el archivo aparece en el bucket, (b) la URL guardada en `providers.logoUrl` se renderiza correctamente por `next/image`. _(diferido — requiere credenciales reales tras configurar Dokploy)_.

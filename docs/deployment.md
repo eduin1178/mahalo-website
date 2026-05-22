@@ -107,7 +107,7 @@ Migrations are intentionally **not** run by the deploy pipeline or by the contai
   Example: `postgres://mahalo:supersecret@dokploy.example.com:5434/mahalo`.
 - [ ] **Run the migration from your local checkout**
   ```bash
-  DATABASE_URL="postgres://..." npm run db:migrate
+  DATABASE_URL="postgres://..." pnpm run db:migrate
   ```
   Confirm the command exits with status 0 and prints the applied migrations.
 - [ ] **Verify**: connect with `psql` (or a GUI) using the same URL and inspect a key table to confirm the schema matches expectations.

@@ -13,8 +13,9 @@ GitHub (push master/dev)
                         └─▶ Dokploy: pull image + redeploy
 
 Dokploy project: "mahalo"
-  ├── Postgres service (internal network only)
-  └── Application service (pulls Docker Hub image, env vars, R2 credentials)
+  ├── Postgres service       (Dokploy Database, internal network only)
+  └── App service            (Dokploy Compose, reads docker-compose.dokploy.yml
+                              from the repo, pulls image from Docker Hub)
 
 Cloudflare R2
   └── Bucket: <R2_BUCKET>  (user uploads, public via R2_PUBLIC_BASE_URL)
@@ -56,6 +57,7 @@ Before the first deploy, provision (in this order):
 | `R2_SECRET_ACCESS_KEY` | Dokploy app env | R2 S3 API secret |
 | `R2_BUCKET` | Dokploy app env | R2 bucket name |
 | `R2_PUBLIC_BASE_URL` | Dokploy app env | Public base URL of the bucket, e.g. `https://pub-<hash>.r2.dev` |
+| `DOCKER_IMAGE` | Dokploy app env | Image reference used by `docker-compose.dokploy.yml`, e.g. `<dockerhub-username>/mahalo-website:latest`. Change to `:sha-<commit>` for rollback. |
 
 ### 3.2 Where to obtain each value
 
@@ -78,13 +80,14 @@ Before the first deploy, provision (in this order):
 4. **Merge to `master`**. Wait for the GitHub Actions workflow to publish the first image. Confirm the image appears in Docker Hub.
 5. **In Dokploy**:
    - Create Project "mahalo".
-   - Create **Database service → PostgreSQL 16**. Use a strong password (record it). Do **not** expose a public port. Note the internal connection string.
-   - Create **Application service**:
-     - Source: Docker image.
-     - Image: `<dockerhub-username>/mahalo-website:latest`.
-     - Port: `3000`.
+   - Create **Database service → PostgreSQL 16**. Use a strong password (record it). Do **not** expose a public port. Note the internal service hostname (e.g. `mahalo-db`) and the internal connection string.
+   - Create **Compose service** (NOT "Application/Docker Image"):
+     - Source: connect this GitHub repository (install the Dokploy GitHub App if needed; grant access to the private repo).
+     - Branch: `master`.
+     - Compose path: `docker-compose.dokploy.yml`.
+     - Service to expose: `app`, port `3000`.
      - Domain: attach your domain (Dokploy provisions TLS via Traefik).
-     - Environment variables: fill every row from §3.1 except the three GitHub secrets.
+     - Environment variables: fill every row from §3.1 except the three GitHub secrets. Add an extra var `DOCKER_IMAGE=<dockerhub-username>/mahalo-website:latest` so the compose file resolves the image reference.
 6. **Run the initial database migration** following §5.
 7. **In Dokploy** → App → Deployments → Auto Deploy → generate webhook URL. Copy it.
 8. **In GitHub** → repo secrets → add `DOKPLOY_DEPLOY_WEBHOOK`.
@@ -123,7 +126,7 @@ Repeat this checklist for every future migration release.
 ## 7. Rollback
 
 1. Identify the previous good commit SHA (from `git log` or Docker Hub tags).
-2. In Dokploy → App → change the image tag from `:latest` to `:sha-<previous-short>` and redeploy.
+2. In Dokploy → App (Compose) → Environment → change `DOCKER_IMAGE` from `<user>/mahalo-website:latest` to `<user>/mahalo-website:sha-<previous-short>` and redeploy.
 3. If the bad release included a migration, roll back the schema manually following §5 (running the inverse migration or restoring from backup) before reverting the image — otherwise the older code may not be compatible with the newer schema.
 
 ## 8. Notes & limits

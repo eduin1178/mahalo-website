@@ -1,0 +1,69 @@
+# =============================================================================
+# PRODUCTION COMPOSE — used by Dokploy "Compose" service type.
+# =============================================================================
+# Deploys the Mahalo web application by pulling a pre-built image from Docker
+# Hub. The PostgreSQL database is provisioned as a separate Dokploy database
+# service in the same project and is reached over the `dokploy-network` bridge
+# using its internal service hostname (configured in DATABASE_URL).
+#
+# This file is NOT used for local development. For local dev use
+# `docker-compose.yml`.
+# =============================================================================
+
+services:
+  app:
+    image: ${DOCKER_IMAGE:-eduin1178/mahalo-website:latest}
+    pull_policy: always
+    restart: unless-stopped
+    expose:
+      - "3000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+
+      # Database (internal Dokploy hostname)
+      DATABASE_URL: ${DATABASE_URL}
+
+      # Public app URL (the domain attached to this service in Dokploy)
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+
+      # Clerk
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+
+      # Order drafts
+      DRAFT_COOKIE_SECRET: ${DRAFT_COOKIE_SECRET}
+
+      # Resend (transactional email)
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL}
+
+      # Admin bootstrap
+      ADMIN_BOOTSTRAP_EMAILS: ${ADMIN_BOOTSTRAP_EMAILS}
+
+      # USPS
+      USPS_API_BASE: ${USPS_API_BASE}
+      USPS_CONSUMER_KEY: ${USPS_CONSUMER_KEY}
+      USPS_CONSUMER_SECRET: ${USPS_CONSUMER_SECRET}
+
+      # Cloudflare R2 (file storage)
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY}
+      R2_BUCKET: ${R2_BUCKET}
+      R2_PUBLIC_BASE_URL: ${R2_PUBLIC_BASE_URL}
+    networks:
+      - dokploy-network
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "wget -q -O - http://localhost:3000/ >/dev/null 2>&1 || exit 1"
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+networks:
+  dokploy-network:
+    external: true

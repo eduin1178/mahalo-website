@@ -29,12 +29,12 @@ export default async function CheckoutConfirmationPage() {
       return (
         <div className="flex flex-col gap-4">
           <h1 className="text-2xl font-semibold tracking-tight text-mahalo-navy-900 sm:text-3xl">
-            We couldn&apos;t submit your order
+            No pudimos enviar tu pedido
           </h1>
           <p className="text-sm text-muted-foreground">{result.error}</p>
           <div>
             <Button render={<Link href="/checkout/schedule" />}>
-              Back to scheduling
+              Volver a la programación
             </Button>
           </div>
         </div>
@@ -45,28 +45,27 @@ export default async function CheckoutConfirmationPage() {
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-2">
-        <span className="eyebrow">Step 8 of 8</span>
         <h1 className="text-2xl font-semibold tracking-tight text-mahalo-navy-900 sm:text-3xl">
-          Your order is in
+          Tu pedido está confirmado
         </h1>
       </header>
 
       <div className="rounded-lg border bg-card p-6 text-sm leading-relaxed text-foreground">
         <p>
-          Thanks! One of our agents will contact you shortly to verify your
-          identity (SSN and date of birth) before activating service. You&apos;ll
-          receive an email confirmation as soon as the order is created with
-          your provider.
+          ¡Gracias! Uno de nuestros agentes te contactará pronto para verificar
+          tu identidad (SSN y fecha de nacimiento) antes de activar el servicio.
+          Recibirás una confirmación por correo en cuanto se cree el pedido con
+          tu proveedor.
         </p>
         <p className="mt-3 text-muted-foreground">
-          Reference:{" "}
+          Referencia:{" "}
           <span className="font-mono text-xs">{orderId.slice(0, 8)}</span>
         </p>
       </div>
 
       <div>
         <Button render={<Link href="/" />} variant="outline">
-          Return home
+          Volver al inicio
         </Button>
       </div>
     </div>

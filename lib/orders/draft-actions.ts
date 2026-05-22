@@ -5,7 +5,6 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { providerHasActiveAddOns } from "@/lib/add-ons/queries";
 import { findProvidersByZip } from "@/lib/coverage/queries";
 import { getDb } from "@/lib/db/client";
 import {
@@ -93,26 +92,28 @@ export async function clearDraftCookie(): Promise<void> {
   store.delete(DRAFT_COOKIE_NAME);
 }
 
-const selectPlanSchema = z.object({
+const finalizePhase1Schema = z.object({
   planId: z.string().uuid(),
+  addOnIds: z.array(z.string().uuid()).max(50),
 });
 
-export type SelectPlanResult = { ok: false; error: string };
+export type FinalizePhase1Result = { ok: false; error: string };
 
-export async function selectPlan(input: {
+export async function finalizePhase1(input: {
   planId: string;
-}): Promise<SelectPlanResult> {
-  const parsed = selectPlanSchema.safeParse(input);
+  addOnIds: string[];
+}): Promise<FinalizePhase1Result> {
+  const parsed = finalizePhase1Schema.safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: "Invalid plan selection." };
+    return { ok: false, error: "Selección inválida." };
   }
 
   const draft = await getCurrentDraft();
   if (!draft) {
-    return { ok: false, error: "Your session has expired. Start over." };
+    return { ok: false, error: "Tu sesión expiró. Empieza de nuevo." };
   }
   if (!draft.zipCode) {
-    return { ok: false, error: "Missing ZIP on draft. Start over." };
+    return { ok: false, error: "Falta el código ZIP. Empieza de nuevo." };
   }
 
   const db = getDb();
@@ -121,14 +122,36 @@ export async function selectPlan(input: {
     .from(plans)
     .where(and(eq(plans.id, parsed.data.planId), eq(plans.isActive, true)))
     .limit(1);
-
   if (!plan) {
-    return { ok: false, error: "Plan not available." };
+    return { ok: false, error: "El plan ya no está disponible." };
   }
 
   const covered = await findProvidersByZip(draft.zipCode);
   if (!covered.some((p) => p.id === plan.providerId)) {
-    return { ok: false, error: "Plan not available for your ZIP." };
+    return { ok: false, error: "El plan no está disponible para tu ZIP." };
+  }
+
+  const requestedAddOnIds = Array.from(new Set(parsed.data.addOnIds));
+  let validatedAddOnIds: string[] = [];
+
+  if (requestedAddOnIds.length > 0) {
+    const rows = await db
+      .select({ id: addOns.id })
+      .from(addOns)
+      .where(
+        and(
+          inArray(addOns.id, requestedAddOnIds),
+          eq(addOns.providerId, plan.providerId),
+          eq(addOns.isActive, true),
+        ),
+      );
+    if (rows.length !== requestedAddOnIds.length) {
+      return {
+        ok: false,
+        error: "Uno o más extras ya no están disponibles.",
+      };
+    }
+    validatedAddOnIds = rows.map((r) => r.id);
   }
 
   await db
@@ -136,65 +159,12 @@ export async function selectPlan(input: {
     .set({
       providerId: plan.providerId,
       planId: plan.id,
-      addOnIds: [],
+      addOnIds: validatedAddOnIds,
       updatedAt: new Date(),
     })
     .where(eq(orders.id, draft.id));
 
-  const hasAddOns = await providerHasActiveAddOns(plan.providerId);
-  redirect(hasAddOns ? "/checkout/add-ons" : "/checkout/summary");
-}
-
-const selectAddOnsSchema = z.object({
-  addOnIds: z.array(z.string().uuid()).max(50),
-});
-
-export type SelectAddOnsResult = { ok: false; error: string };
-
-export async function selectAddOns(input: {
-  addOnIds: string[];
-}): Promise<SelectAddOnsResult> {
-  const parsed = selectAddOnsSchema.safeParse(input);
-  if (!parsed.success) {
-    return { ok: false, error: "Invalid add-on selection." };
-  }
-
-  const draft = await getCurrentDraft();
-  if (!draft) {
-    return { ok: false, error: "Your session has expired. Start over." };
-  }
-  if (!draft.providerId) {
-    return { ok: false, error: "Choose a plan first." };
-  }
-
-  const ids = Array.from(new Set(parsed.data.addOnIds));
-  const db = getDb();
-  let validatedIds: string[] = [];
-
-  if (ids.length > 0) {
-    const rows = await db
-      .select({ id: addOns.id })
-      .from(addOns)
-      .where(
-        and(
-          inArray(addOns.id, ids),
-          eq(addOns.providerId, draft.providerId),
-          eq(addOns.isActive, true),
-        ),
-      );
-
-    if (rows.length !== ids.length) {
-      return { ok: false, error: "One or more add-ons are no longer available." };
-    }
-    validatedIds = rows.map((r) => r.id);
-  }
-
-  await db
-    .update(orders)
-    .set({ addOnIds: validatedIds, updatedAt: new Date() })
-    .where(eq(orders.id, draft.id));
-
-  redirect("/checkout/summary");
+  redirect("/checkout/details");
 }
 
 const addressSchema = z.object({
@@ -239,84 +209,6 @@ const customerInfoSchema = z
       });
     }
   });
-
-export type CustomerInfoInput = z.input<typeof customerInfoSchema>;
-
-export type SaveCustomerInfoResult =
-  | { ok: false; error: string; fieldErrors?: Record<string, string[]> };
-
-export async function saveCustomerInfo(
-  input: CustomerInfoInput,
-): Promise<SaveCustomerInfoResult> {
-  const parsed = customerInfoSchema.safeParse(input);
-  if (!parsed.success) {
-    return {
-      ok: false,
-      error: "Please fix the highlighted fields.",
-      fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]>,
-    };
-  }
-
-  const draft = await getCurrentDraft();
-  if (!draft) {
-    return { ok: false, error: "Your session has expired. Start over." };
-  }
-
-  const data = parsed.data;
-  const installation: AddressJson = {
-    line1: data.installationAddress.line1,
-    line2: data.installationAddress.line2,
-    city: data.installationAddress.city,
-    state: data.installationAddress.state,
-    zip: data.installationAddress.zip,
-  };
-  const billing: AddressJson | null =
-    data.useDifferentBilling && data.billingAddress
-      ? {
-          line1: data.billingAddress.line1,
-          line2: data.billingAddress.line2,
-          city: data.billingAddress.city,
-          state: data.billingAddress.state,
-          zip: data.billingAddress.zip,
-        }
-      : null;
-
-  const db = getDb();
-
-  const [customer] = await db
-    .insert(customers)
-    .values({
-      firstName: data.firstName,
-      lastName: data.lastName,
-      email: data.email,
-      phone: data.phone,
-      phoneType: data.phoneType,
-    })
-    .onConflictDoUpdate({
-      target: customers.email,
-      set: {
-        firstName: data.firstName,
-        lastName: data.lastName,
-        phone: data.phone,
-        phoneType: data.phoneType,
-        updatedAt: new Date(),
-      },
-    })
-    .returning({ id: customers.id });
-
-  await db
-    .update(orders)
-    .set({
-      customerId: customer.id,
-      installationAddress: installation,
-      billingAddress: billing,
-      zipCode: installation.zip,
-      updatedAt: new Date(),
-    })
-    .where(eq(orders.id, draft.id));
-
-  redirect("/checkout/payment");
-}
 
 function luhnValid(digits: string): boolean {
   let sum = 0;
@@ -369,37 +261,88 @@ const savePaymentSchema = z.discriminatedUnion("autopay", [
   }),
 ]);
 
-export type SavePaymentInput = z.input<typeof savePaymentSchema>;
-export type SavePaymentResult =
+const finalizePhase2Schema = z.object({
+  customer: customerInfoSchema,
+  payment: savePaymentSchema,
+});
+
+export type FinalizePhase2Input = z.input<typeof finalizePhase2Schema>;
+export type FinalizePhase2Result =
   | { ok: false; error: string; fieldErrors?: Record<string, string[]> };
 
-// SECURITY: stored in plain text per requirement; PCI is client responsibility.
-export async function savePayment(
-  input: SavePaymentInput,
-): Promise<SavePaymentResult> {
-  const parsed = savePaymentSchema.safeParse(input);
+export async function finalizePhase2(
+  input: FinalizePhase2Input,
+): Promise<FinalizePhase2Result> {
+  const parsed = finalizePhase2Schema.safeParse(input);
   if (!parsed.success) {
     return {
       ok: false,
-      error: "Please fix the highlighted fields.",
+      error: "Revisa los campos resaltados.",
       fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]>,
     };
   }
 
   const draft = await getCurrentDraft();
   if (!draft) {
-    return { ok: false, error: "Your session has expired. Start over." };
+    return { ok: false, error: "Tu sesión expiró. Empieza de nuevo." };
   }
-  if (!draft.customerId) {
-    return { ok: false, error: "Add your customer info first." };
+  if (!draft.providerId || !draft.planId) {
+    return { ok: false, error: "Elige un plan primero." };
   }
 
+  const c = parsed.data.customer;
+  const installation: AddressJson = {
+    line1: c.installationAddress.line1,
+    line2: c.installationAddress.line2,
+    city: c.installationAddress.city,
+    state: c.installationAddress.state,
+    zip: c.installationAddress.zip,
+  };
+  const billing: AddressJson | null =
+    c.useDifferentBilling && c.billingAddress
+      ? {
+          line1: c.billingAddress.line1,
+          line2: c.billingAddress.line2,
+          city: c.billingAddress.city,
+          state: c.billingAddress.state,
+          zip: c.billingAddress.zip,
+        }
+      : null;
+
   const db = getDb();
+
+  const [customer] = await db
+    .insert(customers)
+    .values({
+      firstName: c.firstName,
+      lastName: c.lastName,
+      email: c.email,
+      phone: c.phone,
+      phoneType: c.phoneType,
+    })
+    .onConflictDoUpdate({
+      target: customers.email,
+      set: {
+        firstName: c.firstName,
+        lastName: c.lastName,
+        phone: c.phone,
+        phoneType: c.phoneType,
+        updatedAt: new Date(),
+      },
+    })
+    .returning({ id: customers.id });
+
   await db
     .update(orders)
     .set({
-      autopayEnabled: parsed.data.autopay,
-      paymentData: parsed.data.autopay ? parsed.data.payment : null,
+      customerId: customer.id,
+      installationAddress: installation,
+      billingAddress: billing,
+      zipCode: installation.zip,
+      autopayEnabled: parsed.data.payment.autopay,
+      paymentData: parsed.data.payment.autopay
+        ? parsed.data.payment.payment
+        : null,
       updatedAt: new Date(),
     })
     .where(eq(orders.id, draft.id));

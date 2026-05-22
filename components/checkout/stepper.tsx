@@ -4,54 +4,63 @@ import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 
-type Step = { id: number; label: string; path: string };
+type Phase = { id: number; label: string; matches: (path: string) => boolean };
 
-const STEPS: readonly Step[] = [
-  { id: 1, label: "Address", path: "/checkout" },
-  { id: 2, label: "Plan", path: "/checkout/plan" },
-  { id: 3, label: "Add-ons", path: "/checkout/add-ons" },
-  { id: 4, label: "Summary", path: "/checkout/summary" },
-  { id: 5, label: "Customer", path: "/checkout/customer" },
-  { id: 6, label: "Payment", path: "/checkout/payment" },
-  { id: 7, label: "Schedule", path: "/checkout/schedule" },
-  { id: 8, label: "Confirm", path: "/checkout/confirmation" },
+const PHASES: readonly Phase[] = [
+  {
+    id: 1,
+    label: "Plan",
+    matches: (p) => p === "/checkout/plan" || p.startsWith("/checkout/plan/"),
+  },
+  {
+    id: 2,
+    label: "Datos",
+    matches: (p) =>
+      p === "/checkout/details" || p.startsWith("/checkout/details/"),
+  },
+  {
+    id: 3,
+    label: "Instalación",
+    matches: (p) =>
+      p === "/checkout/schedule" || p.startsWith("/checkout/schedule/"),
+  },
 ];
 
-function resolveCurrentStepId(pathname: string | null): number {
-  if (!pathname) return 1;
-  let best = STEPS[0];
-  for (const step of STEPS) {
-    if (pathname === step.path && step.path.length >= best.path.length) {
-      best = step;
-    } else if (
-      step.path !== "/checkout" &&
-      pathname.startsWith(`${step.path}/`) &&
-      step.path.length >= best.path.length
-    ) {
-      best = step;
-    }
+const HIDDEN_ON: readonly string[] = ["/checkout", "/checkout/confirmation"];
+
+function resolveCurrentPhaseId(pathname: string | null): number | null {
+  if (!pathname) return null;
+  if (HIDDEN_ON.includes(pathname)) return null;
+  for (const phase of PHASES) {
+    if (phase.matches(pathname)) return phase.id;
   }
-  return best.id;
+  return null;
 }
 
 export function CheckoutStepper() {
   const pathname = usePathname();
-  const currentId = resolveCurrentStepId(pathname);
+  const currentId = resolveCurrentPhaseId(pathname);
+
+  if (currentId === null) return null;
 
   return (
     <ol
-      aria-label="Checkout progress"
-      className="flex items-center gap-1 overflow-x-auto pb-2 text-xs sm:gap-2 sm:text-sm"
+      aria-label="Progreso del pedido"
+      className="flex items-center gap-2 pb-2 text-xs sm:gap-3 sm:text-sm"
     >
-      {STEPS.map((step, i) => {
+      {PHASES.map((phase, i) => {
         const state =
-          step.id < currentId ? "done" : step.id === currentId ? "active" : "todo";
+          phase.id < currentId
+            ? "done"
+            : phase.id === currentId
+              ? "active"
+              : "todo";
         return (
-          <li key={step.id} className="flex shrink-0 items-center gap-2">
+          <li key={phase.id} className="flex flex-1 items-center gap-2">
             <span
               aria-current={state === "active" ? "step" : undefined}
               className={cn(
-                "flex size-6 items-center justify-center rounded-full border text-[11px] font-semibold sm:size-7 sm:text-xs",
+                "flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold sm:size-8 sm:text-sm",
                 state === "done" &&
                   "border-mahalo-blue-600 bg-mahalo-blue-600 text-white",
                 state === "active" &&
@@ -59,20 +68,20 @@ export function CheckoutStepper() {
                 state === "todo" && "border-border text-muted-foreground",
               )}
             >
-              {step.id}
+              {phase.id}
             </span>
             <span
               className={cn(
-                "hidden whitespace-nowrap sm:inline",
+                "whitespace-nowrap",
                 state === "active"
-                  ? "font-medium text-mahalo-navy-900"
+                  ? "font-semibold text-mahalo-navy-900"
                   : "text-muted-foreground",
               )}
             >
-              {step.label}
+              {phase.label}
             </span>
-            {i < STEPS.length - 1 && (
-              <span aria-hidden className="h-px w-3 bg-border sm:w-6" />
+            {i < PHASES.length - 1 && (
+              <span aria-hidden className="ml-2 h-px flex-1 bg-border" />
             )}
           </li>
         );

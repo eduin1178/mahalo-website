@@ -40,7 +40,7 @@ export function DraftBootstrap({
           {error}
         </p>
         <Button variant="outline" onClick={() => router.push("/")}>
-          Try a different ZIP
+          Probar con otro ZIP
         </Button>
       </div>
     );
@@ -52,7 +52,7 @@ export function DraftBootstrap({
         aria-hidden
         className="size-3 animate-pulse rounded-full bg-mahalo-blue-600"
       />
-      Setting things up…
+      Preparando todo…
     </div>
   );
 }

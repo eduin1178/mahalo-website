@@ -1,8 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { PlanCard } from "@/components/checkout/plan-card";
+import {
+  Phase1Form,
+  type Phase1ProviderEntry,
+} from "@/components/checkout/phase1-form";
 import { Button } from "@/components/ui/button";
+import { listAddOnsByProvider } from "@/lib/add-ons/queries";
 import { getAvailableProviders } from "@/lib/coverage/availability";
 import { getCurrentDraft } from "@/lib/orders/draft";
 
@@ -15,69 +19,67 @@ export default async function CheckoutPlanPage() {
 
   const result = await getAvailableProviders(draft.zipCode);
 
-  return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-2">
-        <span className="eyebrow">Step 2 of 8</span>
-        <h1 className="text-2xl font-semibold tracking-tight text-mahalo-navy-900 sm:text-3xl">
-          Choose your plan
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {result.ok ? (
-            <>
-              Plans available for ZIP{" "}
-              <span className="font-mono text-mahalo-navy-900">
-                {result.zip}
-              </span>
-              .
-            </>
-          ) : (
-            <>We couldn&apos;t verify your address. Please start over.</>
-          )}
-        </p>
-      </header>
+  if (!result.ok) {
+    return (
+      <div className="flex flex-col gap-6">
+        <Header zip={null} />
+        <NoCoverage message={result.error.message} variant="error" />
+      </div>
+    );
+  }
 
-      {!result.ok ? (
+  if (result.providers.length === 0) {
+    return (
+      <div className="flex flex-col gap-6">
+        <Header zip={result.zip} />
         <NoCoverage
-          message={result.error.message}
-          variant="error"
-        />
-      ) : result.providers.length === 0 ? (
-        <NoCoverage
-          message={`No providers cover ZIP ${result.zip} yet.`}
+          message={`Todavía no hay proveedores para el ZIP ${result.zip}.`}
           variant="empty"
         />
-      ) : (
-        <div className="flex flex-col gap-10">
-          {result.providers.map(({ provider, plans }) => (
-            <section
-              key={provider.id}
-              aria-labelledby={`provider-${provider.id}`}
-              className="flex flex-col gap-4"
-            >
-              <div className="flex items-center gap-3">
-                <span
-                  aria-hidden
-                  className="inline-block size-3 rounded-full"
-                  style={{ backgroundColor: provider.primaryColor }}
-                />
-                <h2
-                  id={`provider-${provider.id}`}
-                  className="text-base font-semibold text-mahalo-navy-900"
-                >
-                  {provider.name}
-                </h2>
-              </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {plans.map((plan) => (
-                  <PlanCard key={plan.id} provider={provider} plan={plan} />
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
-      )}
+      </div>
+    );
+  }
+
+  const entries: Phase1ProviderEntry[] = await Promise.all(
+    result.providers.map(async ({ provider, plans }) => {
+      const all = await listAddOnsByProvider(provider.id);
+      return {
+        provider,
+        plans,
+        addOns: all.filter((a) => a.isActive),
+      };
+    }),
+  );
+
+  return (
+    <div className="flex flex-col gap-6">
+      <Header zip={result.zip} />
+      <Phase1Form
+        entries={entries}
+        initialPlanId={draft.planId ?? null}
+        initialAddOnIds={Array.isArray(draft.addOnIds) ? draft.addOnIds : []}
+      />
     </div>
+  );
+}
+
+function Header({ zip }: { zip: string | null }) {
+  return (
+    <header className="flex flex-col gap-2">
+      <h1 className="text-2xl font-semibold tracking-tight text-mahalo-navy-900 sm:text-3xl">
+        Elige tu plan
+      </h1>
+      <p className="text-sm text-muted-foreground">
+        {zip ? (
+          <>
+            Planes disponibles para el ZIP{" "}
+            <span className="font-mono text-mahalo-navy-900">{zip}</span>.
+          </>
+        ) : (
+          <>No pudimos verificar tu dirección. Empieza de nuevo.</>
+        )}
+      </p>
+    </header>
   );
 }
 
@@ -91,11 +93,11 @@ function NoCoverage({
   return (
     <div className="flex flex-col items-start gap-4 rounded-xl border border-dashed border-border bg-surface px-6 py-10">
       <h2 className="text-lg font-semibold text-mahalo-navy-900">
-        {variant === "empty" ? "No coverage yet" : "We hit a snag"}
+        {variant === "empty" ? "Aún sin cobertura" : "Tuvimos un problema"}
       </h2>
       <p className="text-sm text-muted-foreground">{message}</p>
       <Button variant="outline" render={<Link href="/" />}>
-        Back to home
+        Volver al inicio
       </Button>
     </div>
   );

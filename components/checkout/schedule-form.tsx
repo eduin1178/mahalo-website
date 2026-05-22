@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -63,7 +62,7 @@ export function ScheduleForm({
     setServerError(null);
 
     if (!date || hour === null) {
-      setServerError("Pick a date and a time slot.");
+      setServerError("Elige un día y un horario.");
       return;
     }
 
@@ -87,10 +86,10 @@ export function ScheduleForm({
       <section className="flex flex-col gap-4 rounded-xl border border-border bg-background p-5">
         <div className="flex flex-col gap-1">
           <h2 className="text-base font-semibold text-mahalo-navy-900">
-            Pick a day
+            Elige un día
           </h2>
           <p className="text-sm text-muted-foreground">
-            Installation is available Monday through Saturday.
+            La instalación está disponible de lunes a sábado.
           </p>
         </div>
         <Calendar
@@ -113,15 +112,15 @@ export function ScheduleForm({
       >
         <div className="flex flex-col gap-1">
           <h2 className="text-base font-semibold text-mahalo-navy-900">
-            Pick a time
+            Elige un horario
           </h2>
           <p className="text-sm text-muted-foreground">
-            Slots run from 8:00 AM to 5:00 PM, every hour.
+            Los turnos van de 8:00 AM a 5:00 PM, cada hora.
           </p>
         </div>
         <div
           role="radiogroup"
-          aria-label="Installation time"
+          aria-label="Horario de instalación"
           className="grid grid-cols-2 gap-2 sm:grid-cols-5"
         >
           {HOURS.map((h) => {
@@ -160,15 +159,12 @@ export function ScheduleForm({
       ) : null}
 
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        <Button variant="outline" render={<Link href="/checkout/payment" />}>
-          Back
-        </Button>
         <Button
           type="submit"
           variant="primary"
           disabled={pending || !date || hour === null}
         >
-          {pending ? "Saving…" : "Continue"}
+          {pending ? "Enviando…" : "Confirmar pedido"}
         </Button>
       </div>
     </form>

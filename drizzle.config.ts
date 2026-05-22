@@ -5,7 +5,10 @@ export default defineConfig({
   out: "./db/migrations",
   dialect: "postgresql",
   dbCredentials: {
-    url: process.env.DATABASE_URL ?? "postgres://mahalo:mahalo@localhost:5432/mahalo",
+    url:
+      process.env.DIRECT_DATABASE_URL ??
+      process.env.DATABASE_URL ??
+      "postgres://mahalo:mahalo@localhost:5432/mahalo",
   },
   strict: true,
   verbose: true,

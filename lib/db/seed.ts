@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { getDb, getPool } from "./client";
+import { closeDb, getDb } from "./client";
 import { providers } from "./schema";
 import { sql } from "drizzle-orm";
 
@@ -15,24 +15,26 @@ const seedProviders = [
 ];
 
 async function main() {
-  const db = getDb();
-  console.log("[db:seed] upserting 8 providers â€¦");
+  try {
+    const db = getDb();
+    console.log("[db:seed] upserting 8 providers …");
 
-  for (const p of seedProviders) {
-    await db
-      .insert(providers)
-      .values({ name: p.name, primaryColor: p.primaryColor, isActive: true })
-      .onConflictDoUpdate({
-        target: providers.name,
-        set: { primaryColor: p.primaryColor, updatedAt: sql`now()` },
-      });
+    for (const p of seedProviders) {
+      await db
+        .insert(providers)
+        .values({ name: p.name, primaryColor: p.primaryColor, isActive: true })
+        .onConflictDoUpdate({
+          target: providers.name,
+          set: { primaryColor: p.primaryColor, updatedAt: sql`now()` },
+        });
+    }
+
+    const rows = await db.select({ id: providers.id, name: providers.name }).from(providers);
+    console.log(`[db:seed] providers in DB: ${rows.length}`);
+    for (const r of rows) console.log(`  - ${r.name} (${r.id})`);
+  } finally {
+    await closeDb();
   }
-
-  const rows = await db.select({ id: providers.id, name: providers.name }).from(providers);
-  console.log(`[db:seed] providers in DB: ${rows.length}`);
-  for (const r of rows) console.log(`  - ${r.name} (${r.id})`);
-
-  await getPool().end();
 }
 
 main().catch((err) => {

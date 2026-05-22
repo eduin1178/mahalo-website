@@ -11,7 +11,6 @@
       "Bash(pnpm dlx shadcn@latest add form --debug)",
       "Bash(pnpm dlx shadcn@latest add @shadcn/form --yes)",
       "Bash(docker --version)",
-      "Bash(docker compose *)",
       "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:3000)",
       "Bash(pnpm exec drizzle-kit *)",
       "Bash(docker exec *)",

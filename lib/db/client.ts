@@ -1,22 +1,34 @@
-import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
-import { Pool } from "pg";
+import { neonConfig, Pool } from "@neondatabase/serverless";
+import { drizzle, type NeonDatabase } from "drizzle-orm/neon-serverless";
+import ws from "ws";
 import * as schema from "./schema";
 
-type DrizzleDb = NodePgDatabase<typeof schema>;
+type DrizzleDb = NeonDatabase<typeof schema>;
 
 const globalForDb = globalThis as unknown as {
-  __mahaloPgPool?: Pool;
+  __mahaloNeonPool?: Pool;
   __mahaloDb?: DrizzleDb;
+  __mahaloNeonConfigured?: boolean;
 };
 
+function configureNeonDriver(): void {
+  if (globalForDb.__mahaloNeonConfigured) return;
+  neonConfig.webSocketConstructor = ws;
+  globalForDb.__mahaloNeonConfigured = true;
+}
+
 export function getPool(): Pool {
-  if (!globalForDb.__mahaloPgPool) {
+  configureNeonDriver();
+
+  if (!globalForDb.__mahaloNeonPool) {
     if (!process.env.DATABASE_URL) {
       throw new Error("DATABASE_URL is not set");
     }
-    globalForDb.__mahaloPgPool = new Pool({ connectionString: process.env.DATABASE_URL });
+    globalForDb.__mahaloNeonPool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+    });
   }
-  return globalForDb.__mahaloPgPool;
+  return globalForDb.__mahaloNeonPool;
 }
 
 export function getDb(): DrizzleDb {
@@ -31,5 +43,13 @@ export const db: DrizzleDb = new Proxy({} as DrizzleDb, {
     return Reflect.get(getDb() as unknown as object, prop, receiver);
   },
 });
+
+export async function closeDb(): Promise<void> {
+  if (globalForDb.__mahaloNeonPool) {
+    await globalForDb.__mahaloNeonPool.end();
+    globalForDb.__mahaloNeonPool = undefined;
+    globalForDb.__mahaloDb = undefined;
+  }
+}
 
 export { schema };

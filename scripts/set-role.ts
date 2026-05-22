@@ -8,7 +8,7 @@
  * Reads CLERK_SECRET_KEY from the environment.
  */
 import "dotenv/config";
-import { createClerkClient } from "@clerk/backend";
+import { createClerkClient } from "@clerk/nextjs/server";
 
 const VALID_ROLES = ["admin", "agent"] as const;
 type Role = (typeof VALID_ROLES)[number];

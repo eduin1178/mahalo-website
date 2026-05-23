@@ -17,7 +17,7 @@ const items = [
     icon: HeartHandshakeIcon,
     title: "A real person to help",
     description:
-      "After you submit, an agent calls to verify the details and walks you through the install — no chatbots.",
+      "After you submit, an agent calls to verify the details and walks you through the installation — no chatbots.",
   },
   {
     icon: ShieldCheckIcon,

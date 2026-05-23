@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import { useMemo, useState, useTransition } from "react";
 
+import { ProviderLogoImage } from "@/components/providers/provider-logo-image";
 import { Button } from "@/components/ui/button";
 import { finalizePhase1 } from "@/lib/orders/draft-actions";
 import type { AddOn, Plan, Provider } from "@/lib/db/schema";
@@ -234,11 +234,9 @@ function PlanOption({
       <header className="flex items-center gap-3 border-b border-border/60 bg-surface px-5 py-4">
         <div className="flex h-10 w-24 items-center justify-start">
           {provider.logoUrl ? (
-            <Image
+            <ProviderLogoImage
               src={provider.logoUrl}
               alt={provider.name}
-              width={120}
-              height={40}
               className="max-h-10 w-auto object-contain"
             />
           ) : (

@@ -126,3 +126,13 @@ Recommended release order when a deploy includes schema changes:
 - `DIRECT_DATABASE_URL` should be reserved for migrations and operational scripts.
 - R2 public URLs are intended for provider logos. Do not store private files in the public bucket without redesigning the storage layer.
 - The old Docker Hub + Dokploy workflow has been removed; Vercel should own production deployments now.
+### R2 uploaded logo troubleshooting
+
+Provider logos uploaded to R2 are rendered with a plain HTML `<img>` instead of `next/image` so they do not depend on Next's build-time `images.remotePatterns`.
+
+If an uploaded logo does not render:
+
+1. Copy the saved `providers.logoUrl` from the database or admin UI.
+2. Open it directly in a private browser window.
+3. If the direct URL returns 403 or 404, fix Cloudflare R2 public access, `R2_PUBLIC_BASE_URL`, or the stored object key.
+4. If the direct URL returns 200 but the app is broken, inspect app HTML/CSS/cache rather than the upload path.

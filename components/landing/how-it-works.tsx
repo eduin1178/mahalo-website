@@ -25,7 +25,7 @@ const steps = [
     n: 3,
     title: "A real person calls you - no chatbots",
     description:
-      "An agent confirms the details, schedules your install, and gets you online. Humans only.",
+      "An agent confirms the details, schedules your installation, and gets you online. Humans only.",
     emphasized: true,
     image: "/landing/steps/setp-3.png",
     imageAlt: "Human follow-up moment with a real person confirming service details",
@@ -45,7 +45,7 @@ export function HowItWorks() {
             From search to installed in three steps.
           </h2>
           <p className="mt-4 max-w-xl text-base leading-7 text-muted-foreground">
-            Mahalo turns the messy provider-shopping process into one guided flow:
+            Mahalo turns the tedious provider-shopping process into one guided flow:
             address, comparison, then a real human confirmation.
           </p>
 

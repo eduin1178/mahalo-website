@@ -1,3 +1,5 @@
+> **Nota de archivo (2026-05-29):** la propuesta original planteaba el deploy sobre **Dokploy + Docker Hub + GitHub Actions**. Ese approach fue **descartado**: la aplicación se despliega en **Vercel + Neon + Cloudflare R2**. La capacidad `file-storage` (R2) se implementó tal como se propuso; la capacidad `deployment` se reescribió para reflejar Vercel/Neon antes de sincronizar a las main specs. Este texto se conserva como registro histórico de la intención inicial.
+
 ## Why
 
 El proyecto no tiene una infraestructura de despliegue definida ni un pipeline de build automatizado: hoy depende de un `docker-compose.yml` local que mezcla app y base de datos, los uploads se guardan en disco efímero (`./public/uploads`) y no existe estrategia para promover cambios a un entorno productivo. Necesitamos un camino reproducible, idempotente y trazable para llevar la aplicación a Dokploy, con la base de datos como servicio gestionado, imágenes versionadas en un registry público y storage de archivos resistente a redeploys.

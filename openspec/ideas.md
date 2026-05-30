@@ -1,1 +1,3 @@
-Usar imágenes de pexels y unsplash para la página web.
+
+- Terminos y condiciones y politicas de privacidad.
+

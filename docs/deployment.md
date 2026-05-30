@@ -1,7 +1,7 @@
-# Deployment guide — Mahalo Website
+# Deployment guide ï¿½ Mahalo Website
 
 > Production deployment runbook for **Vercel + Neon + Cloudflare R2**.
-> Docker files in this repository are for local/self-hosted workflows only; production deploys should use Vercel's native Next.js integration.
+> Production deploys use Vercel's native Next.js integration. The repository no longer ships Docker artifacts; the previous Docker Hub + Dokploy pipeline has been removed.
 
 ## 1. Architecture
 

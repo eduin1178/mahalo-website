@@ -13,9 +13,9 @@ The system SHALL persist user-uploaded files (logos, attachments, and any future
 - **WHEN** an authenticated admin submits a logo via the provider admin UI
 - **THEN** the server action SHALL stream the file to the configured R2 bucket using the storage module and SHALL NOT call any `node:fs` write API for that file.
 
-#### Scenario: Container has no writable uploads directory
-- **WHEN** the production container is inspected
-- **THEN** there SHALL be no `public/uploads` directory pre-created by the Dockerfile, and the runtime SHALL not depend on a mounted volume for user uploads.
+#### Scenario: Runtime has no writable uploads directory
+- **WHEN** the production runtime is inspected
+- **THEN** the application SHALL NOT create or depend on a `public/uploads` directory or any mounted volume for user uploads; all uploads SHALL live in R2.
 
 ### Requirement: Storage module API
 The repository SHALL expose a storage module at `lib/storage/` whose default export provides at least three operations: `putObject({ key, body, contentType })`, `getPublicUrl(key)`, and `deleteObject(key)`. All code that handles user uploads SHALL go through this module rather than instantiating an S3 client directly.

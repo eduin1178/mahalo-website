@@ -7,7 +7,7 @@ Define how the Mahalo website is built, configured, and promoted to production. 
 ## Requirements
 
 ### Requirement: Production deployment on Vercel
-The system SHALL deploy the application to production using Vercel's native Next.js integration, driven by Git pushes to the production branch. The repository SHALL NOT depend on a Docker image registry, a self-hosted container orchestrator, or an external auto-deploy webhook for production deploys. The root `Dockerfile` SHALL be reserved for local or self-hosted workflows only and SHALL NOT be the production deployment manifest.
+The system SHALL deploy the application to production using Vercel's native Next.js integration, driven by Git pushes to the production branch. The repository SHALL NOT depend on a Docker image, a Docker image registry, a self-hosted container orchestrator, or an external auto-deploy webhook for production deploys, and SHALL NOT ship a `Dockerfile` or `docker-compose` manifest as part of the deployment path.
 
 #### Scenario: Push to the production branch deploys
 - **WHEN** a commit is pushed or merged to the production branch connected to the Vercel project

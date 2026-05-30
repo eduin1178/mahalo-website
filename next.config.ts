@@ -25,7 +25,6 @@ function buildRemotePatterns(): NonNullable<
 }
 
 const nextConfig: NextConfig = {
-  output: "standalone",
   images: {
     localPatterns: [
       {

@@ -18,9 +18,17 @@ import {
 import { calculateTotal } from "@/lib/orders/totals";
 import { getSetting } from "@/lib/settings/queries";
 
-export type WebhookPayload = {
-  event: "order.submitted";
+/**
+ * Unified webhook envelope. Every event posted to `webhook_url` shares this
+ * shape; event-specific content lives under `data`.
+ */
+export type WebhookEnvelope<T = unknown> = {
+  eventType: string;
   emittedAt: string;
+  data: T;
+};
+
+export type OrderSubmittedData = {
   order: Order;
   customer: Customer | null;
   provider: Provider | null;
@@ -43,8 +51,16 @@ const TIMEOUT_MS = 5_000;
 const RETRY_BACKOFF_MS = 2_000;
 const MAX_ATTEMPTS = 2;
 
-export async function triggerWebhook(
-  orderId: string,
+/**
+ * Core dispatcher: wraps `data` in the `{ eventType, emittedAt, data }`
+ * envelope and POSTs it to the configured `webhook_url` with timeout and
+ * retry-with-backoff. Skips cleanly when no URL is configured. Shared by every
+ * event type so the delivery contract stays in one place.
+ */
+export async function postWebhook(
+  eventType: string,
+  data: unknown,
+  logLabel: string,
 ): Promise<TriggerWebhookResult> {
   const url = await getSetting("webhook_url");
   if (!url) {
@@ -52,12 +68,12 @@ export async function triggerWebhook(
     return { ok: true, skipped: true, reason: "webhook_url not set" };
   }
 
-  const payload = await buildPayload(orderId);
-  if (!payload) {
-    return { ok: false, error: "Order not found", attempts: 0 };
-  }
-
-  const body = JSON.stringify(payload);
+  const envelope: WebhookEnvelope = {
+    eventType,
+    emittedAt: new Date().toISOString(),
+    data,
+  };
+  const body = JSON.stringify(envelope);
 
   let lastError = "";
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
@@ -74,20 +90,20 @@ export async function triggerWebhook(
 
       if (res.ok) {
         console.info(
-          `[webhook] order=${orderId} attempt=${attempt} status=${res.status} ok`,
+          `[webhook] ${logLabel} event=${eventType} attempt=${attempt} status=${res.status} ok`,
         );
         return { ok: true, status: res.status, attempts: attempt };
       }
       lastError = `HTTP ${res.status}`;
       console.warn(
-        `[webhook] order=${orderId} attempt=${attempt} failed status=${res.status}`,
+        `[webhook] ${logLabel} event=${eventType} attempt=${attempt} failed status=${res.status}`,
       );
     } catch (err) {
       clearTimeout(timer);
       lastError =
         err instanceof Error ? err.message : "Unknown webhook error";
       console.warn(
-        `[webhook] order=${orderId} attempt=${attempt} threw: ${lastError}`,
+        `[webhook] ${logLabel} event=${eventType} attempt=${attempt} threw: ${lastError}`,
       );
     }
 
@@ -97,12 +113,24 @@ export async function triggerWebhook(
   }
 
   console.error(
-    `[webhook] order=${orderId} exhausted ${MAX_ATTEMPTS} attempts: ${lastError}`,
+    `[webhook] ${logLabel} event=${eventType} exhausted ${MAX_ATTEMPTS} attempts: ${lastError}`,
   );
   return { ok: false, error: lastError, attempts: MAX_ATTEMPTS };
 }
 
-async function buildPayload(orderId: string): Promise<WebhookPayload | null> {
+export async function triggerWebhook(
+  orderId: string,
+): Promise<TriggerWebhookResult> {
+  const data = await buildOrderData(orderId);
+  if (!data) {
+    return { ok: false, error: "Order not found", attempts: 0 };
+  }
+  return postWebhook("order.submitted", data, `order=${orderId}`);
+}
+
+async function buildOrderData(
+  orderId: string,
+): Promise<OrderSubmittedData | null> {
   const db = getDb();
   const [order] = await db
     .select()
@@ -147,8 +175,6 @@ async function buildPayload(orderId: string): Promise<WebhookPayload | null> {
   const breakdown = await calculateTotal(order);
 
   return {
-    event: "order.submitted",
-    emittedAt: new Date().toISOString(),
     order,
     customer,
     provider,

@@ -5,6 +5,7 @@ import { MobileSidebar } from "@/components/admin/mobile-sidebar";
 import { SidebarNav } from "@/components/admin/sidebar-nav";
 import { visibleNavFor } from "@/components/admin/nav-config";
 import { authorizeAdminUser } from "@/lib/clerk/authorize";
+import { countNewMessages } from "@/lib/contact/queries";
 
 export default async function AdminPanelLayout({
   children,
@@ -45,7 +46,13 @@ export default async function AdminPanelLayout({
   }
 
   const role = result.status === "authorized" ? result.role : null;
-  const items = visibleNavFor(role);
+  const baseItems = visibleNavFor(role);
+
+  // Decorate the Messages entry with a count of unread submissions.
+  const newMessages = role ? await countNewMessages() : 0;
+  const items = baseItems.map((item) =>
+    item.icon === "messages" ? { ...item, badge: newMessages } : item,
+  );
 
   return (
     <div className="flex min-h-screen bg-background">

@@ -7,6 +7,7 @@ import {
   ClipboardList,
   Cog,
   Layers,
+  Mail,
   MapPinned,
   PackagePlus,
   Users,
@@ -24,6 +25,7 @@ const ICONS: Record<NavIconKey, LucideIcon> = {
   coverage: MapPinned,
   orders: ClipboardList,
   customers: Users,
+  messages: Mail,
   settings: Cog,
 };
 
@@ -55,6 +57,19 @@ export function SidebarNav({ items, onNavigate }: SidebarNavProps) {
           >
             <Icon className="size-4" strokeWidth={1.75} />
             <span>{item.label}</span>
+            {item.badge && item.badge > 0 ? (
+              <span
+                className={cn(
+                  "ml-auto inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-semibold",
+                  active
+                    ? "bg-white/20 text-white"
+                    : "bg-mahalo-blue-600 text-white",
+                )}
+                aria-label={`${item.badge} new`}
+              >
+                {item.badge}
+              </span>
+            ) : null}
           </Link>
         );
       })}

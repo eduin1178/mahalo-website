@@ -7,6 +7,7 @@ export type NavIconKey =
   | "coverage"
   | "orders"
   | "customers"
+  | "messages"
   | "settings";
 
 export type NavItem = {
@@ -15,6 +16,8 @@ export type NavItem = {
   icon: NavIconKey;
   /** If true, only role `admin` can see this entry. Otherwise visible to admin + agent. */
   adminOnly: boolean;
+  /** Optional count rendered as a badge next to the label (e.g. unread messages). */
+  badge?: number;
 };
 
 export const ADMIN_NAV: NavItem[] = [
@@ -24,6 +27,7 @@ export const ADMIN_NAV: NavItem[] = [
   { label: "Coverage", href: "/admin/coverage", icon: "coverage", adminOnly: true },
   { label: "Orders", href: "/admin/orders", icon: "orders", adminOnly: false },
   { label: "Customers", href: "/admin/customers", icon: "customers", adminOnly: false },
+  { label: "Messages", href: "/admin/messages", icon: "messages", adminOnly: false },
   { label: "Settings", href: "/admin/settings", icon: "settings", adminOnly: true },
 ];
 

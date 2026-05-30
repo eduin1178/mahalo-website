@@ -159,6 +159,30 @@ export const settings = pgTable("settings", {
   primaryKey({ columns: [t.key] }),
 ]);
 
+export const contactMessageStatusValues = ["new", "read", "archived"] as const;
+export type ContactMessageStatus = (typeof contactMessageStatusValues)[number];
+
+export const contactMessages = pgTable("contact_messages", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  firstName: varchar("first_name", { length: 80 }).notNull(),
+  lastName: varchar("last_name", { length: 80 }).notNull(),
+  // Deliberately NOT unique: a lead may submit the contact form multiple times.
+  email: varchar("email", { length: 254 }).notNull(),
+  phone: varchar("phone", { length: 32 }).notNull(),
+  zipCode: varchar("zip_code", { length: 5 }).notNull(),
+  message: text("message").notNull(),
+  // Proof-of-consent for the TCPA disclaimer accepted at submit time.
+  consent: boolean("consent").notNull(),
+  status: varchar("status", { length: 16 })
+    .notNull()
+    .default("new")
+    .$type<ContactMessageStatus>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("contact_messages_status_idx").on(t.status),
+  index("contact_messages_created_at_idx").on(t.createdAt),
+]);
+
 export type Provider = typeof providers.$inferSelect;
 export type NewProvider = typeof providers.$inferInsert;
 export type Plan = typeof plans.$inferSelect;
@@ -169,3 +193,5 @@ export type Customer = typeof customers.$inferSelect;
 export type Order = typeof orders.$inferSelect;
 export type OrderStatusHistoryRow = typeof orderStatusHistory.$inferSelect;
 export type Setting = typeof settings.$inferSelect;
+export type ContactMessage = typeof contactMessages.$inferSelect;
+export type NewContactMessage = typeof contactMessages.$inferInsert;

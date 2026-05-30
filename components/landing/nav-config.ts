@@ -14,5 +14,5 @@ export const publicNavItems: PublicNavItem[] = [
 export const publicFooterLinks: PublicNavItem[] = [
   { label: "Terms", href: "/legal/terms" },
   { label: "Privacy", href: "/legal/privacy" },
-  { label: "Contact", href: "mailto:hello@mahaloenterprise.com" },
+  { label: "Contact", href: "/contact" },
 ];

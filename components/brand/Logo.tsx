@@ -18,7 +18,7 @@ export function Logo({
 }: LogoProps) {
   return (
     <Image
-      src="/logo.png"
+      src="/logo2.png"
       alt="Mahalo Enterprise"
       width={width}
       height={height}

@@ -25,8 +25,9 @@ const formSchema = z.object({
   consent: z.literal(true, {
     message: "You must accept the consent disclaimer to continue.",
   }),
-  // Honeypot — must stay empty.
-  company: z.string().max(0).optional(),
+  // Honeypot — hidden from humans. Accepted at the schema level; the server
+  // action silently drops any submission where it is filled.
+  company: z.string().optional(),
 });
 
 type FormValues = z.input<typeof formSchema>;

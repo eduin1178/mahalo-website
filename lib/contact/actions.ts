@@ -20,8 +20,11 @@ const contactSchema = z.object({
   consent: z.literal(true, {
     message: "You must accept the consent disclaimer to continue.",
   }),
-  // Honeypot: must stay empty. Bots fill every field they find.
-  company: z.string().max(0).optional(),
+  // Honeypot: must stay empty. Bots fill every field they find. We accept any
+  // value at the schema level so the explicit honeypot check below can run and
+  // return a success-shaped response (rather than a validation error that would
+  // tip off the bot).
+  company: z.string().optional(),
 });
 
 export type SubmitContactInput = {

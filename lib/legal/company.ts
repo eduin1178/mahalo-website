@@ -2,30 +2,29 @@
  * Single source of truth for legal/business identity used across the Privacy
  * Policy, Terms of Service, and contact disclosures.
  *
- * LAUNCH-BLOCKING TODO: replace every value marked `TODO` with the real,
- * client-confirmed business identity before the site goes public. A privacy
- * policy that cites CCPA/CPRA with placeholder contact details is not
- * compliant.
+ * Values are client-confirmed. When the business identity changes, update it
+ * here and bump LEGAL_LAST_UPDATED so the legal pages reflect the revision.
  */
 export const COMPANY = {
 	/** Public-facing brand name. */
 	name: "Mahalo Enterprise",
-	/** TODO: confirm the registered legal entity name if it differs from the brand. */
+	/** Registered legal entity name. */
 	legalName: "Mahalo Enterprise",
 	siteName: "www.mahaloenterprise.com",
 	siteUrl: "https://www.mahaloenterprise.com",
-	/** TODO: confirm the monitored support inbox. */
+	/** Monitored support inbox. */
 	email: "mahaloenterprise1@gmail.com",
-	/** TODO: real business phone number. */
+	/** Business phone number. */
 	phone: "+1 (551)-331-6440",
+	/** Business mailing address. */
 	address: {
-		line1: "3808 Bowfin Trl",
-		city: "Kissimmee",
-		state: "FL",
-		zip: "34746",
+		line1: "7717 Newkirk Ave",
+		city: "North Bergen",
+		state: "NJ",
+		zip: "07047",
 	},
-	/** TODO: confirm the governing-law jurisdiction (dealer's operating state). */
-	governingState: "Oklahoma",
+	/** Governing-law jurisdiction for the Terms of Service. */
+	governingState: "New Jersey",
 } as const;
 
 /** Shown as the "Last Updated" date on the legal pages. Bump when copy changes. */

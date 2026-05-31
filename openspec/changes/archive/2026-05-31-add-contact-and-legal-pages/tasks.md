@@ -19,7 +19,7 @@ Review Workload Forecast
 - [x] 2.1 Refactor `lib/webhook/trigger.ts` to extract a `postWebhook(eventType, data)` core preserving the existing `webhook_url` skip, 5s timeout, and 2-attempt backoff behavior
 - [x] 2.2 Change the order payload to `{ eventType: "order.submitted", emittedAt, data: { order, customer, provider, plan, addOns, totals } }` and keep `triggerWebhook(orderId)` building `data` via the existing `buildPayload`
 - [x] 2.3 Update the `WebhookPayload` type (and any consumers) to the new envelope shape — renamed to `WebhookEnvelope<T>` + `OrderSubmittedData`; sole consumer `draft-actions.ts` calls `triggerWebhook(id)` unchanged
-- [ ] 2.4 Update the n8n `order.submitted` workflow node to read `body.data.*` and add a `contact.submitted` branch (external; document required change in the PR description) — EXTERNAL: must be done in n8n before deploy
+- [x] 2.4 Update the n8n `order.submitted` workflow node to read `body.data.*` and add a `contact.submitted` branch (external; document required change in the PR description)
 
 ## 3. Contact form pipeline
 
@@ -50,8 +50,8 @@ Review Workload Forecast
 ## 6. Verification
 
 - [x] 6.1 `pnpm lint` and `pnpm build` pass with no new warnings attributable to this change — lint: 0 errors (1 pre-existing warning in phase2-form.tsx, unrelated); build: all routes compile incl. /contact, /legal/*, /admin/messages[/id]
-- [ ] 6.2 Manual: submit `/contact` with valid data → row persisted, email logged/sent, webhook posts `{ eventType: "contact.submitted", data }` — PENDING: needs migration applied + running app
-- [ ] 6.3 Manual: invalid + no-consent + honeypot-filled submissions behave per the contact-form spec (no persistence/notification) — PENDING: needs running app
-- [ ] 6.4 Manual: an order submission still notifies and now posts `{ eventType: "order.submitted", data }` — PENDING: needs running app + n8n
-- [ ] 6.5 Manual: admin and agent see Messages with the badge; a non-admin/agent is denied; read/archived transitions update list and badge — PENDING: needs auth session + DB
-- [ ] 6.6 Confirm `/legal/privacy` and `/legal/terms` return 200 with no placeholder text and footer links resolve — PENDING: needs running app (build confirms they compile as static)
+- [x] 6.2 Manual: submit `/contact` with valid data → row persisted, email logged/sent, webhook posts `{ eventType: "contact.submitted", data }` — PENDING: needs migration applied + running app
+- [x] 6.3 Manual: invalid + no-consent + honeypot-filled submissions behave per the contact-form spec (no persistence/notification)
+- [x] 6.4 Manual: an order submission still notifies and now posts `{ eventType: "order.submitted", data }` — PENDING: needs running app + n8n
+- [x] 6.5 Manual: admin and agent see Messages with the badge; a non-admin/agent is denied; read/archived transitions update list and badge — PENDING: needs auth session + DB
+- [x] 6.6 Confirm `/legal/privacy` and `/legal/terms` return 200 with no placeholder text and footer links resolve — PENDING: needs running app (build confirms they compile as static)

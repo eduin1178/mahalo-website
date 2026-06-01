@@ -7,7 +7,7 @@ import { ProviderLogoImage } from "@/components/providers/provider-logo-image";
 type ProviderItem = {
   id: string;
   name: string;
-  logoUrl: string | null;
+  landingImageUrl: string | null;
   primaryColor: string | null;
 };
 
@@ -36,9 +36,9 @@ export function ProvidersCarousel({ providers }: ProvidersCarouselProps) {
               style={style}
               className="provider-card group relative flex aspect-3/4 w-[calc(100cqw-2rem)] shrink-0 flex-col overflow-hidden rounded-3xl border border-white/80 bg-white/85 shadow-[0_24px_62px_rgba(11,31,77,0.1)] ring-1 ring-mahalo-navy-900/5 backdrop-blur transition-shadow duration-300 hover:shadow-[0_30px_80px_rgba(11,31,77,0.18)] sm:w-[calc((100cqw-1.25rem)/2)] lg:w-[calc((100cqw-2.5rem)/3)]"
             >
-              {p.logoUrl ? (
+              {p.landingImageUrl ? (
                 <ProviderLogoImage
-                  src={p.logoUrl}
+                  src={p.landingImageUrl}
                   alt={p.name}
                   className="absolute inset-0 object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:transition-none"
                 />

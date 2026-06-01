@@ -290,10 +290,7 @@ export function Phase2Form({
       className="flex flex-col gap-6"
       noValidate
     >
-      <section
-        id={SECTION_IDS.contact}
-        className="flex flex-col gap-4 rounded-xl border border-border bg-background p-5 scroll-mt-24"
-      >
+      <SectionCard id={SECTION_IDS.contact}>
         <h2 className="text-base font-semibold text-mahalo-navy-900">
           Contact
         </h2>
@@ -362,7 +359,7 @@ export function Phase2Form({
             <p className="text-xs text-destructive">{errors.phoneType.message}</p>
           ) : null}
         </fieldset>
-      </section>
+      </SectionCard>
 
       <AddressSection
         id={SECTION_IDS.installation}
@@ -372,10 +369,7 @@ export function Phase2Form({
         errors={errors.installationAddress as never}
       />
 
-      <section
-        id={SECTION_IDS.billing}
-        className="flex flex-col gap-4 rounded-xl border border-border bg-background p-5 scroll-mt-24"
-      >
+      <SectionCard id={SECTION_IDS.billing}>
         <label className="flex cursor-pointer items-start gap-3">
           <input
             type="checkbox"
@@ -401,12 +395,9 @@ export function Phase2Form({
             embedded
           />
         ) : null}
-      </section>
+      </SectionCard>
 
-      <section
-        id={SECTION_IDS.payment}
-        className="flex flex-col gap-4 rounded-xl border border-border bg-background p-5 scroll-mt-24"
-      >
+      <SectionCard id={SECTION_IDS.payment}>
         <div className="flex items-start justify-between gap-4">
           <div className="flex flex-col gap-1">
             <span className="text-base font-semibold text-mahalo-navy-900">
@@ -608,7 +599,7 @@ export function Phase2Form({
             </p>
           </div>
         ) : null}
-      </section>
+      </SectionCard>
 
       {serverError ? (
         <p role="alert" className="text-sm text-destructive">
@@ -617,7 +608,13 @@ export function Phase2Form({
       ) : null}
 
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        <Button type="submit" variant="primary" disabled={pending}>
+        <Button
+          type="submit"
+          variant="primary"
+          size="lg"
+          className="h-12 w-full rounded-xl px-10 text-base font-semibold sm:w-auto"
+          disabled={pending}
+        >
           {pending ? "Saving…" : "Continue"}
         </Button>
       </div>
@@ -642,6 +639,39 @@ function translatePhoneType(value: string): string {
     default:
       return value;
   }
+}
+
+const SECTION_CARD_CLASS =
+  "relative overflow-hidden rounded-3xl premium-light-card p-6 md:p-7 scroll-mt-24";
+
+function SectionDecor() {
+  return (
+    <>
+      <div
+        className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-mahalo-cyan-500/15 blur-3xl"
+        aria-hidden="true"
+      />
+      <div
+        className="pointer-events-none absolute inset-x-6 top-0 h-px bg-linear-to-r from-transparent via-white to-transparent"
+        aria-hidden="true"
+      />
+    </>
+  );
+}
+
+function SectionCard({
+  id,
+  children,
+}: {
+  id?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section id={id} className={SECTION_CARD_CLASS}>
+      <SectionDecor />
+      <div className="relative flex flex-col gap-4">{children}</div>
+    </section>
+  );
 }
 
 function Field({
@@ -693,14 +723,8 @@ function AddressSection({
   errors?: AddressErrors;
   embedded?: boolean;
 }) {
-  return (
-    <section
-      id={id}
-      className={cn(
-        "flex flex-col gap-4 scroll-mt-24",
-        !embedded && "rounded-xl border border-border bg-background p-5",
-      )}
-    >
+  const body = (
+    <>
       <h2 className="text-base font-semibold text-mahalo-navy-900">{title}</h2>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field
@@ -767,6 +791,14 @@ function AddressSection({
           </Field>
         </div>
       </div>
-    </section>
+    </>
   );
+
+  if (embedded) {
+    return (
+      <section className="flex flex-col gap-4 scroll-mt-24">{body}</section>
+    );
+  }
+
+  return <SectionCard id={id}>{body}</SectionCard>;
 }

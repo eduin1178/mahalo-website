@@ -1,28 +1,38 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useId, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import { uploadProviderLogo } from "@/lib/providers/actions";
+import {
+  uploadProviderImage,
+  type ProviderImageType,
+} from "@/lib/providers/actions";
 
 const MAX_BYTES = 1024 * 1024;
 const ACCEPT = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
 
-export function ProviderLogoForm({
+export function ProviderImageForm({
   id,
+  imageType,
+  label,
+  hint,
   currentUrl,
   providerName,
 }: {
   id: string;
+  imageType: ProviderImageType;
+  label: string;
+  hint: string;
   currentUrl: string | null;
   providerName: string;
 }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
+  const inputId = useId();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -30,7 +40,7 @@ export function ProviderLogoForm({
   function action(formData: FormData) {
     setError(null);
     setSuccess(null);
-    const file = formData.get("logo");
+    const file = formData.get("image");
     if (!(file instanceof File) || file.size === 0) {
       setError("Choose a file first.");
       return;
@@ -44,13 +54,14 @@ export function ProviderLogoForm({
       return;
     }
     formData.set("id", id);
+    formData.set("imageType", imageType);
     startTransition(async () => {
-      const result = await uploadProviderLogo(formData);
+      const result = await uploadProviderImage(formData);
       if (!result.ok) {
         setError(result.error);
         return;
       }
-      setSuccess("Logo updated.");
+      setSuccess("Image updated.");
       formRef.current?.reset();
       router.refresh();
     });
@@ -64,26 +75,24 @@ export function ProviderLogoForm({
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={currentUrl}
-              alt={`${providerName} logo`}
+              alt={`${providerName} ${label.toLowerCase()}`}
               className="max-h-20 max-w-20 object-contain"
             />
           ) : (
-            <span className="text-xs text-muted-foreground">No logo</span>
+            <span className="text-xs text-muted-foreground">None</span>
           )}
         </div>
         <form ref={formRef} action={action} className="grid flex-1 gap-3">
           <div className="grid gap-1.5">
-            <Label htmlFor="logo-input">Replace logo</Label>
+            <Label htmlFor={inputId}>Replace {label.toLowerCase()}</Label>
             <Input
-              id="logo-input"
+              id={inputId}
               type="file"
-              name="logo"
+              name="image"
               accept={ACCEPT.join(",")}
               required
             />
-            <p className="text-xs text-muted-foreground">
-              PNG, JPG, WebP or SVG. Max 1MB.
-            </p>
+            <p className="text-xs text-muted-foreground">{hint}</p>
           </div>
           <div className="flex items-center gap-3">
             <Button type="submit" variant="solid" size="sm" disabled={pending}>

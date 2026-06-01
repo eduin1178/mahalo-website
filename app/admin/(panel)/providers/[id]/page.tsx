@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProviderActiveToggle } from "@/components/admin/providers/provider-active-toggle";
 import { ProviderEditForm } from "@/components/admin/providers/provider-edit-form";
-import { ProviderLogoForm } from "@/components/admin/providers/provider-logo-form";
+import { ProviderImageForm } from "@/components/admin/providers/provider-logo-form";
 import { PlansSection } from "@/components/admin/plans/plans-section";
 import { AddOnsSection } from "@/components/admin/add-ons/add-ons-section";
 import { requireRole } from "@/lib/clerk/require-role";
@@ -60,13 +60,45 @@ export default async function ProviderDetailPage({
         </TabsList>
 
         <TabsContent value="details" className="space-y-8 pt-4">
-          <section className="space-y-3 rounded-xl border bg-white p-6">
-            <h2 className="text-lg font-semibold text-mahalo-navy-900">Logo</h2>
-            <ProviderLogoForm
-              id={provider.id}
-              currentUrl={provider.logoUrl}
-              providerName={provider.name}
-            />
+          <section className="space-y-6 rounded-xl border bg-white p-6">
+            <div className="space-y-3">
+              <div>
+                <h2 className="text-lg font-semibold text-mahalo-navy-900">
+                  Landing image
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Promotional artwork shown full-bleed in the landing carousel.
+                </p>
+              </div>
+              <ProviderImageForm
+                id={provider.id}
+                imageType="landing"
+                label="Landing image"
+                hint="PNG, JPG, WebP or SVG. Max 1MB."
+                currentUrl={provider.landingImageUrl}
+                providerName={provider.name}
+              />
+            </div>
+
+            <div className="space-y-3 border-t pt-6">
+              <div>
+                <h2 className="text-lg font-semibold text-mahalo-navy-900">
+                  Card logo
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Contained brand logo shown in checkout plan cards. Optional —
+                  if empty, the card shows the provider name in its brand color.
+                </p>
+              </div>
+              <ProviderImageForm
+                id={provider.id}
+                imageType="logo"
+                label="Card logo"
+                hint="PNG, JPG, WebP or SVG. Max 1MB."
+                currentUrl={provider.logoUrl}
+                providerName={provider.name}
+              />
+            </div>
           </section>
 
           <section className="space-y-3 rounded-xl border bg-white p-6">

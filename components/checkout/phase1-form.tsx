@@ -102,7 +102,7 @@ export function Phase1Form({
               {provider.name}
             </h2>
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {plans.map((plan) => (
               <PlanOption
                 key={plan.id}
@@ -119,9 +119,17 @@ export function Phase1Form({
       {selected && availableAddOns.length > 0 ? (
         <section
           aria-labelledby="addons-heading"
-          className="flex flex-col gap-4 rounded-xl border border-border bg-background p-5"
+          className="relative flex flex-col gap-4 overflow-hidden rounded-3xl premium-light-card p-6 md:p-7"
         >
-          <div className="flex flex-col gap-1">
+          <div
+            className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-mahalo-cyan-500/15 blur-3xl"
+            aria-hidden="true"
+          />
+          <div
+            className="pointer-events-none absolute inset-x-6 top-0 h-px bg-linear-to-r from-transparent via-white to-transparent"
+            aria-hidden="true"
+          />
+          <div className="relative flex flex-col gap-1">
             <h2
               id="addons-heading"
               className="text-base font-semibold text-mahalo-navy-900"
@@ -132,7 +140,7 @@ export function Phase1Form({
               Optional. You can skip this step.
             </p>
           </div>
-          <ul className="flex flex-col gap-3">
+          <ul className="relative flex flex-col gap-3">
             {availableAddOns.map((addOn) => {
               const checked = selectedAddOnIds.has(addOn.id);
               const price = Number(addOn.price).toFixed(2);
@@ -192,6 +200,8 @@ export function Phase1Form({
         <Button
           type="button"
           variant="primary"
+          size="lg"
+          className="h-12 w-full rounded-xl px-10 text-base font-semibold sm:w-auto"
           disabled={pending || !selectedPlanId}
           onClick={onContinue}
         >
@@ -220,19 +230,21 @@ function PlanOption({
   return (
     <article
       className={cn(
-        "flex h-full flex-col overflow-hidden rounded-xl border bg-background shadow-sm transition",
-        selected
-          ? "border-mahalo-blue-600 ring-2 ring-mahalo-blue-600/30"
-          : "border-border hover:shadow-md",
+        "group relative flex h-full min-h-90 flex-col overflow-hidden rounded-3xl premium-light-card transition-all duration-300 hover:-translate-y-2 hover:scale-[1.015] hover:shadow-[0_42px_110px_rgba(4,16,45,0.38)] focus-within:-translate-y-2 focus-within:scale-[1.015] motion-reduce:transform-none motion-reduce:transition-none",
+        selected && "ring-2 ring-mahalo-blue-600",
       )}
-      style={
-        selected
-          ? undefined
-          : { borderTopColor: provider.primaryColor, borderTopWidth: 4 }
-      }
     >
-      <header className="flex items-center gap-3 border-b border-border/60 bg-surface px-5 py-4">
-        <div className="flex h-10 w-24 items-center justify-start">
+      <div
+        className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-mahalo-cyan-500/15 blur-3xl transition-opacity duration-300 group-hover:opacity-100"
+        aria-hidden="true"
+      />
+      <div
+        className="pointer-events-none absolute inset-x-6 top-0 h-px bg-linear-to-r from-transparent via-white to-transparent"
+        aria-hidden="true"
+      />
+
+      <div className="relative flex flex-1 flex-col gap-5 p-6 md:p-7">
+        <div className="flex min-h-10 items-center">
           {provider.logoUrl ? (
             <ProviderLogoImage
               src={provider.logoUrl}
@@ -240,35 +252,38 @@ function PlanOption({
               className="max-h-10 w-auto object-contain"
             />
           ) : (
-            <span className="text-sm font-semibold text-mahalo-navy-900">
+            <span
+              className="rounded-md px-3 py-1.5 text-xl font-bold leading-tight"
+              style={{
+                color: provider.primaryColor,
+                backgroundColor: `color-mix(in srgb, ${provider.primaryColor} 10%, transparent)`,
+              }}
+            >
               {provider.name}
             </span>
           )}
         </div>
-        <span className="ml-auto text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          {provider.name}
-        </span>
-      </header>
 
-      <div className="flex flex-1 flex-col gap-4 p-5">
         <div>
-          <h3 className="text-lg font-semibold text-mahalo-navy-900">
+          <h3 className="text-2xl font-bold tracking-tight text-mahalo-navy-900">
             {plan.name}
           </h3>
-          <p className="text-sm text-muted-foreground">{plan.speed}</p>
+          <p className="mt-1 text-sm font-medium text-muted-foreground">
+            {plan.speed}
+          </p>
         </div>
 
-        <div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-mahalo-navy-900">
+        <div className="rounded-2xl bg-white/70 p-4 ring-1 ring-mahalo-navy-900/10">
+          <div className="flex items-end gap-1">
+            <span className="text-4xl font-bold tracking-tight text-mahalo-navy-900">
               ${autopay}
             </span>
-            <span className="text-sm font-medium text-mahalo-navy-900">
+            <span className="pb-1 text-sm font-medium text-muted-foreground">
               /mo with autopay
             </span>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            ${standard}/mo standard
+          <p className="mt-1 text-xs font-medium text-muted-foreground">
+            ${standard}/mo standard rate.
           </p>
         </div>
 
@@ -287,15 +302,19 @@ function PlanOption({
           </ul>
         ) : null}
 
-        <div className="mt-auto pt-2">
-          <Button
-            type="button"
-            variant={selected ? "primary" : "outline"}
-            onClick={onSelect}
-          >
-            {selected ? "Plan selected" : "Choose plan"}
-          </Button>
-        </div>
+        <button
+          type="button"
+          onClick={onSelect}
+          aria-pressed={selected}
+          className={cn(
+            "mt-auto w-full rounded-xl border-2 px-4 py-3 text-sm font-semibold shadow-md transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mahalo-cyan-500 focus-visible:ring-offset-2 motion-reduce:transition-none",
+            selected
+              ? "border-mahalo-navy-900 bg-white text-mahalo-navy-900 hover:bg-surface"
+              : "border-mahalo-navy-900 bg-mahalo-navy-900 text-white hover:border-mahalo-cyan-500 hover:bg-mahalo-navy-700 hover:shadow-lg",
+          )}
+        >
+          {selected ? "Plan selected" : "Choose plan"}
+        </button>
       </div>
     </article>
   );

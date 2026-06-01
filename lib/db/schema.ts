@@ -31,6 +31,10 @@ export type PhoneType = (typeof phoneTypeValues)[number];
 export const providers = pgTable("providers", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   name: varchar("name", { length: 120 }).notNull().unique(),
+  // Promotional artwork rendered full-bleed in the landing carousel.
+  landingImageUrl: text("landing_image_url"),
+  // Contained brand logo rendered in the checkout plan cards. Optional: when
+  // absent, the plan card falls back to the provider name in `primaryColor`.
   logoUrl: text("logo_url"),
   primaryColor: varchar("primary_color", { length: 9 }).notNull(),
   isActive: boolean("is_active").notNull().default(true),

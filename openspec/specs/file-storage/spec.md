@@ -3,9 +3,7 @@
 ## Purpose
 
 Define how the application persists user-uploaded binary assets (provider logos and any future uploads). Storage is backed by **Cloudflare R2** through an S3-compatible client exposed by a single storage module, so the runtime never writes uploads to the container filesystem and stays portable across serverless deploys.
-
 ## Requirements
-
 ### Requirement: File storage backed by Cloudflare R2
 The system SHALL persist user-uploaded files (logos, attachments, and any future binary asset) in a Cloudflare R2 bucket using an S3-compatible client. The application SHALL NOT write user uploads to the container filesystem at runtime.
 
@@ -55,12 +53,31 @@ The `next.config.ts` `images.remotePatterns` configuration SHALL include the hos
 - **THEN** the build SHALL succeed with no R2 remote pattern added, and any misconfiguration SHALL surface at the storage module's first use instead.
 
 ### Requirement: Existing provider logo upload migrates to R2
-The implementation of `uploadProviderLogo` in `lib/providers/actions.ts` SHALL use the storage module instead of writing to `public/uploads/providers/`. The stored `logoUrl` value on the `providers` table SHALL be the absolute public R2 URL returned by `getPublicUrl`.
 
-#### Scenario: Replacing an existing logo
-- **WHEN** an admin uploads a new logo for a provider that already has one with a different file extension
-- **THEN** the action SHALL upload the new object, update `providers.logoUrl` with the new public URL, and SHALL attempt to delete the previous object via `deleteObject` (ignoring not-found errors).
+The provider image upload action(s) in `lib/providers/actions.ts` SHALL use the storage module instead of writing to the container filesystem, and SHALL manage **two independent provider image types**:
+
+- **landing image** — the promotional artwork rendered in the landing carousel, persisted on `providers.landingImageUrl`;
+- **card logo** — the contained brand mark rendered in checkout plan cards, persisted on `providers.logoUrl` (optional).
+
+Each image type SHALL be stored under a per-provider folder key of the form `providers/{id}/landing.{ext}` and `providers/{id}/logo.{ext}` respectively, so the two assets never collide. The stored database value for each field SHALL be the absolute public R2 URL returned by `getPublicUrl`. Uploading, replacing, and deleting one image type SHALL NOT affect the other.
+
+#### Scenario: Uploading a landing image
+
+- **WHEN** an authenticated admin submits a landing image for a provider
+- **THEN** the action SHALL stream the file to R2 under `providers/{id}/landing.{ext}` via the storage module, update `providers.landingImageUrl` with the public URL, and SHALL NOT modify `providers.logoUrl`.
+
+#### Scenario: Uploading a card logo
+
+- **WHEN** an authenticated admin submits a card logo for a provider
+- **THEN** the action SHALL stream the file to R2 under `providers/{id}/logo.{ext}` via the storage module, update `providers.logoUrl` with the public URL, and SHALL NOT modify `providers.landingImageUrl`.
+
+#### Scenario: Replacing an existing image with a different extension
+
+- **WHEN** an admin uploads a new image of one type for a provider that already has that image type stored with a different file extension
+- **THEN** the action SHALL upload the new object, update the corresponding field with the new public URL, and SHALL attempt to delete the previous object of that same type via `deleteObject` (ignoring not-found errors), leaving the other image type untouched.
 
 #### Scenario: Validation errors do not touch storage
-- **WHEN** the uploaded file fails size or MIME validation
+
+- **WHEN** an uploaded file fails size or MIME validation
 - **THEN** the action SHALL return the validation error and SHALL NOT call `putObject`.
+

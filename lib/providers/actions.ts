@@ -166,66 +166,85 @@ function extractKeyFromUrl(value: string): string | null {
   }
 }
 
-const ALLOWED_LOGO_TYPES: Record<string, string> = {
+const ALLOWED_IMAGE_TYPES: Record<string, string> = {
   "image/png": "png",
   "image/jpeg": "jpg",
   "image/jpg": "jpg",
   "image/webp": "webp",
   "image/svg+xml": "svg",
 };
-const MAX_LOGO_BYTES = 1024 * 1024; // 1MB
+const MAX_IMAGE_BYTES = 1024 * 1024; // 1MB
 
-export async function uploadProviderLogo(
+// The two independent provider image types. Each maps to its own DB column and
+// its own R2 key suffix under the per-provider folder `providers/{id}/`.
+export const providerImageTypes = ["landing", "logo"] as const;
+export type ProviderImageType = (typeof providerImageTypes)[number];
+
+const IMAGE_FIELD = {
+  landing: "landingImageUrl",
+  logo: "logoUrl",
+} as const satisfies Record<ProviderImageType, "landingImageUrl" | "logoUrl">;
+
+export async function uploadProviderImage(
   formData: FormData,
-): Promise<ActionResult<{ logoUrl: string }>> {
+): Promise<ActionResult<{ url: string; type: ProviderImageType }>> {
   await requireRole("admin");
 
   const idCheck = z.string().uuid().safeParse(formData.get("id"));
   if (!idCheck.success) return { ok: false, error: "Invalid provider id" };
   const id = idCheck.data;
 
-  const file = formData.get("logo");
+  const typeCheck = z.enum(providerImageTypes).safeParse(formData.get("imageType"));
+  if (!typeCheck.success) return { ok: false, error: "Invalid image type" };
+  const imageType = typeCheck.data;
+  const field = IMAGE_FIELD[imageType];
+
+  const file = formData.get("image");
   if (!(file instanceof File) || file.size === 0) {
     return { ok: false, error: "No file provided" };
   }
-  if (file.size > MAX_LOGO_BYTES) {
+  if (file.size > MAX_IMAGE_BYTES) {
     return { ok: false, error: "File exceeds 1MB limit" };
   }
-  const ext = ALLOWED_LOGO_TYPES[file.type];
+  const ext = ALLOWED_IMAGE_TYPES[file.type];
   if (!ext) {
     return { ok: false, error: "Unsupported file type. Use png, jpg, webp or svg." };
   }
 
   const db = getDb();
   const [existing] = await db
-    .select({ logoUrl: providers.logoUrl })
+    .select({
+      landingImageUrl: providers.landingImageUrl,
+      logoUrl: providers.logoUrl,
+    })
     .from(providers)
     .where(eq(providers.id, id))
     .limit(1);
   if (!existing) return { ok: false, error: "Provider not found" };
 
-  const filename = `${id}.${ext}`;
-  const key = `providers/${filename}`;
+  const key = `providers/${id}/${imageType}.${ext}`;
   const bytes = Buffer.from(await file.arrayBuffer());
 
   await putObject({ key, body: bytes, contentType: file.type });
 
-  if (existing.logoUrl) {
-    const prevKey = extractKeyFromUrl(existing.logoUrl);
+  // Clean up only the previous object of THIS type; never touch the other image.
+  const prevUrl = existing[field];
+  if (prevUrl) {
+    const prevKey = extractKeyFromUrl(prevUrl);
     if (prevKey && prevKey !== key) {
       await deleteObject(prevKey);
     }
   }
 
-  const logoUrl = `${getPublicUrl(key)}?v=${Date.now()}`;
+  const url = `${getPublicUrl(key)}?v=${Date.now()}`;
   await db
     .update(providers)
-    .set({ logoUrl, updatedAt: new Date() })
+    .set({ [field]: url, updatedAt: new Date() })
     .where(eq(providers.id, id));
 
   revalidatePath("/admin/providers");
   revalidatePath(`/admin/providers/${id}`);
-  return { ok: true, data: { logoUrl } };
+  return { ok: true, data: { url, type: imageType } };
 }
 
 export type ProviderRow = Provider;

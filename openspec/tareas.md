@@ -1,3 +1,5 @@
-- **Card de cierre.** Cuando el cliente termina el proceso de compra, se le muestra una card de cierre que le agradece por su compra y le proporciona información sobre el siguiente paso. Esta card debe ser mas destacada, mas impactante, quizá con un confeti o algo semilar.
+1. La sección "Review your order" que está al final debería estar antes del disclaimer, es decir, entre el Choose time y el disclaimer. De esta forma el botón de confirmación queda al final.
 
-- **Cards de planes.** Las cards de los planes deben mostrar el logo del proveedor en lugar de la imagen que se usa actualmente para mostrar cada proveedor en la landing page. La imagen de cada proveedor se manteiene para la landing pero se debe adicionar una imagen distinta para el logo que se usará en las cards de elegir el plan.  Esto ayudará a los usuarios a identificar rápidamente el proveedor y a generar confianza en la compra. Si no se ha cargado la imagen de logo debe mostrar un texto fallback con el nombre del proveedor usando el color del respectivo proveedor.
+3. La card "Summary" no está mostrando nada, debería ir acumulando los valores seleccionados, en revisiones anteriores funcionaba bien. 
+
+3. Por último, en la card de Autopay deberiamos modificar la forma de elegir el método. Actualmente tenemos un switch en la pare superior derecha. El usuario debería poder hacer clic en una de las dos pequeñas cardas (STANDAR | WITH AUTOPAY) para elegir el método. El switch lo eliminamos.

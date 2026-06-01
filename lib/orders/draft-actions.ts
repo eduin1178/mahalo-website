@@ -1,6 +1,7 @@
 "use server";
 
 import { and, eq, inArray } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -165,6 +166,9 @@ export async function finalizePhase1(input: {
     })
     .where(eq(orders.id, draft.id));
 
+  // Mark the shared checkout layout stale so OrderTotalPanel (rendered in the
+  // layout) re-fetches the updated draft on the redirect navigation.
+  revalidatePath("/checkout", "layout");
   redirect("/checkout/details");
 }
 
@@ -348,6 +352,9 @@ export async function finalizePhase2(
     })
     .where(eq(orders.id, draft.id));
 
+  // Mark the shared checkout layout stale so OrderTotalPanel (rendered in the
+  // layout) re-fetches the updated draft on the redirect navigation.
+  revalidatePath("/checkout", "layout");
   redirect("/checkout/schedule");
 }
 

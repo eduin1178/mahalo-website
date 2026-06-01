@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -210,6 +210,16 @@ export function Phase2Form({
 
   const savings = Math.max(0, monthlyStandard - monthlyAutopay);
 
+  const standardOptionRef = useRef<HTMLButtonElement>(null);
+  const autopayOptionRef = useRef<HTMLButtonElement>(null);
+
+  function selectAutopay(value: boolean) {
+    form.setValue("autopay", value, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  }
+
   function onSubmit(values: FormValues) {
     setServerError(null);
 
@@ -399,71 +409,99 @@ export function Phase2Form({
       </SectionCard>
 
       <SectionCard id={SECTION_IDS.payment}>
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex flex-col gap-1">
-            <span className="text-base font-semibold text-mahalo-navy-900">
-              Autopay
-            </span>
-            <span className="text-sm text-muted-foreground">
-              Save {formatUsd(savings)}/mo by enabling automatic payments.
-            </span>
-          </div>
-          <label className="inline-flex cursor-pointer items-center gap-2 text-sm">
-            <span className="text-muted-foreground">No</span>
-            <span className="relative inline-flex">
-              <input
-                type="checkbox"
-                className="peer sr-only"
-                aria-label="Enable autopay"
-                {...form.register("autopay")}
-              />
-              <span
-                aria-hidden
-                className="block h-6 w-11 rounded-full bg-border transition-colors peer-checked:bg-mahalo-blue-600 peer-focus-visible:ring-2 peer-focus-visible:ring-ring/50"
-              />
-              <span
-                aria-hidden
-                className="absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5"
-              />
-            </span>
-            <span className="font-medium text-mahalo-navy-900">Yes</span>
-          </label>
+        <div className="flex flex-col gap-1">
+          <span className="text-base font-semibold text-mahalo-navy-900">
+            Autopay
+          </span>
+          <span className="text-sm text-muted-foreground">
+            Save {formatUsd(savings)}/mo by enabling automatic payments.
+          </span>
         </div>
 
-        <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-          <div
+        {/* Hidden registered field keeps React Hook Form as the owner of the
+            boolean value; the cards below drive it via setValue. */}
+        <input
+          type="checkbox"
+          className="sr-only"
+          aria-hidden
+          tabIndex={-1}
+          {...form.register("autopay")}
+        />
+
+        <div
+          role="radiogroup"
+          aria-label="Billing option"
+          className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2"
+        >
+          <button
+            ref={standardOptionRef}
+            type="button"
+            role="radio"
+            aria-checked={!autopay}
+            tabIndex={!autopay ? 0 : -1}
+            onClick={() => selectAutopay(false)}
+            onKeyDown={(e) => {
+              if (
+                e.key === "ArrowRight" ||
+                e.key === "ArrowDown" ||
+                e.key === "ArrowLeft" ||
+                e.key === "ArrowUp"
+              ) {
+                e.preventDefault();
+                selectAutopay(true);
+                autopayOptionRef.current?.focus();
+              }
+            }}
             className={cn(
-              "rounded-lg border p-3",
+              "flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
               !autopay
-                ? "border-mahalo-navy-900/20 bg-surface"
-                : "border-border bg-background",
+                ? "border-mahalo-navy-900/40 bg-surface ring-1 ring-mahalo-navy-900/20"
+                : "border-border bg-background hover:border-mahalo-navy-900/30",
             )}
           >
-            <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
               Standard
-            </dt>
-            <dd className="text-mahalo-navy-900">
+            </span>
+            <span className="text-mahalo-navy-900">
               {formatUsd(monthlyStandard)}
               <span className="text-xs text-muted-foreground"> /mo</span>
-            </dd>
-          </div>
-          <div
+            </span>
+          </button>
+          <button
+            ref={autopayOptionRef}
+            type="button"
+            role="radio"
+            aria-checked={autopay}
+            tabIndex={autopay ? 0 : -1}
+            onClick={() => selectAutopay(true)}
+            onKeyDown={(e) => {
+              if (
+                e.key === "ArrowRight" ||
+                e.key === "ArrowDown" ||
+                e.key === "ArrowLeft" ||
+                e.key === "ArrowUp"
+              ) {
+                e.preventDefault();
+                selectAutopay(false);
+                standardOptionRef.current?.focus();
+              }
+            }}
             className={cn(
-              "rounded-lg border p-3",
+              "flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
               autopay
-                ? "border-mahalo-blue-600/40 bg-surface"
-                : "border-border bg-background",
+                ? "border-mahalo-blue-600/60 bg-surface ring-1 ring-mahalo-blue-600/30"
+                : "border-border bg-background hover:border-mahalo-blue-600/40",
             )}
           >
-            <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
               With autopay
-            </dt>
-            <dd className="text-mahalo-navy-900">
+            </span>
+            <span className="text-mahalo-navy-900">
               {formatUsd(monthlyAutopay)}
               <span className="text-xs text-muted-foreground"> /mo</span>
-            </dd>
-          </div>
-        </dl>
+            </span>
+          </button>
+        </div>
 
         {autopay ? (
           <div className="flex flex-col gap-4">

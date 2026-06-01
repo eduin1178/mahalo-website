@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { CONSENT_COPY } from "@/lib/legal/consent";
 import { scheduleInstallation } from "@/lib/orders/draft-actions";
 import { cn } from "@/lib/utils";
 
@@ -52,6 +54,8 @@ export function ScheduleForm({
 
   const [date, setDate] = useState<Date | undefined>(initialDate);
   const [hour, setHour] = useState<number | null>(initialHour ?? null);
+  const [consent, setConsent] = useState(false);
+  const [consentError, setConsentError] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -60,9 +64,17 @@ export function ScheduleForm({
   function onSubmit(formEvent: React.FormEvent<HTMLFormElement>) {
     formEvent.preventDefault();
     setServerError(null);
+    setConsentError(null);
 
     if (!date || hour === null) {
       setServerError("Choose a day and a time.");
+      return;
+    }
+
+    if (!consent) {
+      setConsentError(
+        "You must accept the Terms of Service and Privacy Policy to continue.",
+      );
       return;
     }
 
@@ -71,6 +83,7 @@ export function ScheduleForm({
       month: date.getMonth() + 1,
       day: date.getDate(),
       hour,
+      consent: true as const,
     };
 
     startTransition(async () => {
@@ -152,6 +165,47 @@ export function ScheduleForm({
         </div>
       </section>
 
+      <div className="flex flex-col gap-2 rounded-xl border border-border bg-background p-5">
+        <label className="flex cursor-pointer items-start gap-3 text-sm text-mahalo-navy-900">
+          <input
+            type="checkbox"
+            checked={consent}
+            onChange={(e) => {
+              setConsent(e.target.checked);
+              if (e.target.checked) setConsentError(null);
+            }}
+            aria-invalid={consentError ? true : undefined}
+            className="mt-1 size-4 shrink-0 cursor-pointer accent-mahalo-blue-600"
+          />
+          <span className="text-xs leading-relaxed text-muted-foreground">
+            {CONSENT_COPY.before}{" "}
+            <Link
+              href={CONSENT_COPY.termsHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-mahalo-blue-600 hover:underline"
+            >
+              {CONSENT_COPY.termsLabel}
+            </Link>{" "}
+            {CONSENT_COPY.and}{" "}
+            <Link
+              href={CONSENT_COPY.privacyHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-mahalo-blue-600 hover:underline"
+            >
+              {CONSENT_COPY.privacyLabel}
+            </Link>
+            {CONSENT_COPY.after}
+          </span>
+        </label>
+        {consentError ? (
+          <p role="alert" className="text-xs text-destructive">
+            {consentError}
+          </p>
+        ) : null}
+      </div>
+
       {serverError ? (
         <p role="alert" className="text-sm text-destructive">
           {serverError}
@@ -162,7 +216,7 @@ export function ScheduleForm({
         <Button
           type="submit"
           variant="primary"
-          disabled={pending || !date || hour === null}
+          disabled={pending || !date || hour === null || !consent}
         >
           {pending ? "Submitting…" : "Confirm order"}
         </Button>

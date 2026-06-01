@@ -15,6 +15,13 @@
       "when": 1780126284790,
       "tag": "0001_sparkling_wendell_rand",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780281731183,
+      "tag": "0002_complex_wrecking_crew",
+      "breakpoints": true
     }
   ]
 }

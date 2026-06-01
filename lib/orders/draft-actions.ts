@@ -16,6 +16,7 @@ import {
   plans,
   type AddressJson,
 } from "@/lib/db/schema";
+import { CONSENT_VERSION } from "@/lib/legal/consent";
 import { sendNewOrderEmail } from "@/lib/resend/send";
 import { validateAddress } from "@/lib/usps/client";
 import { triggerWebhook } from "@/lib/webhook/trigger";
@@ -358,6 +359,7 @@ const scheduleSchema = z.object({
   month: z.number().int().min(1).max(12),
   day: z.number().int().min(1).max(31),
   hour: z.number().int().min(SCHEDULE_HOUR_MIN).max(SCHEDULE_HOUR_MAX),
+  consent: z.literal(true),
 });
 
 export type ScheduleInstallationInput = z.input<typeof scheduleSchema>;
@@ -368,7 +370,15 @@ export async function scheduleInstallation(
 ): Promise<ScheduleInstallationResult> {
   const parsed = scheduleSchema.safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: "Pick a valid date and time." };
+    const consentMissing = parsed.error.issues.some(
+      (issue) => issue.path[0] === "consent",
+    );
+    return {
+      ok: false,
+      error: consentMissing
+        ? "You must accept the Terms of Service and Privacy Policy to continue."
+        : "Pick a valid date and time.",
+    };
   }
   const { year, month, day, hour } = parsed.data;
 
@@ -401,7 +411,12 @@ export async function scheduleInstallation(
   const db = getDb();
   await db
     .update(orders)
-    .set({ scheduledAt, updatedAt: new Date() })
+    .set({
+      scheduledAt,
+      termsAcceptedAt: new Date(),
+      termsVersion: CONSENT_VERSION,
+      updatedAt: new Date(),
+    })
     .where(eq(orders.id, draft.id));
 
   redirect("/checkout/confirmation");
@@ -428,6 +443,13 @@ export async function submitOrder(): Promise<SubmitOrderResult> {
   }
   if (draft.autopayEnabled && !draft.paymentData) {
     return { ok: false, error: "Payment details are missing." };
+  }
+  if (!draft.termsAcceptedAt) {
+    return {
+      ok: false,
+      error:
+        "We couldn't confirm your consent. Go back and accept the Terms of Service and Privacy Policy.",
+    };
   }
 
   const db = getDb();

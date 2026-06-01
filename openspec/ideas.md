@@ -1,5 +1,3 @@
-
-- Mejorar la card de cierre
-- Recordar disclaimer
-- Logos en los planes, en lugar de las imagenes de los proveedores.
-- 
+- Resltar el color del botón Choose plan
+- Usar el logi en las cards de seleccionar los planes
+- Resaltar la 

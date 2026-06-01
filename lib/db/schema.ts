@@ -130,6 +130,10 @@ export const orders = pgTable("orders", {
   billingAddress: jsonb("billing_address").$type<AddressJson | null>(),
   zipCode: varchar("zip_code", { length: 5 }),
   scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
+  // Proof-of-consent captured when the customer submits the order: acceptance of
+  // the Terms of Service + Privacy Policy and the transactional contact opt-in.
+  termsAcceptedAt: timestamp("terms_accepted_at", { withTimezone: true }),
+  termsVersion: varchar("terms_version", { length: 32 }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [

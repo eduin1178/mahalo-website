@@ -105,15 +105,15 @@ export async function finalizePhase1(input: {
 }): Promise<FinalizePhase1Result> {
   const parsed = finalizePhase1Schema.safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: "Selección inválida." };
+    return { ok: false, error: "Invalid selection." };
   }
 
   const draft = await getCurrentDraft();
   if (!draft) {
-    return { ok: false, error: "Tu sesión expiró. Empieza de nuevo." };
+    return { ok: false, error: "Your session expired. Start over." };
   }
   if (!draft.zipCode) {
-    return { ok: false, error: "Falta el código ZIP. Empieza de nuevo." };
+    return { ok: false, error: "ZIP code is missing. Start over." };
   }
 
   const db = getDb();
@@ -123,12 +123,12 @@ export async function finalizePhase1(input: {
     .where(and(eq(plans.id, parsed.data.planId), eq(plans.isActive, true)))
     .limit(1);
   if (!plan) {
-    return { ok: false, error: "El plan ya no está disponible." };
+    return { ok: false, error: "This plan is no longer available." };
   }
 
   const covered = await findProvidersByZip(draft.zipCode);
   if (!covered.some((p) => p.id === plan.providerId)) {
-    return { ok: false, error: "El plan no está disponible para tu ZIP." };
+    return { ok: false, error: "This plan isn't available for your ZIP." };
   }
 
   const requestedAddOnIds = Array.from(new Set(parsed.data.addOnIds));
@@ -148,7 +148,7 @@ export async function finalizePhase1(input: {
     if (rows.length !== requestedAddOnIds.length) {
       return {
         ok: false,
-        error: "Uno o más extras ya no están disponibles.",
+        error: "One or more add-ons are no longer available.",
       };
     }
     validatedAddOnIds = rows.map((r) => r.id);
@@ -277,17 +277,17 @@ export async function finalizePhase2(
   if (!parsed.success) {
     return {
       ok: false,
-      error: "Revisa los campos resaltados.",
+      error: "Check the highlighted fields.",
       fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]>,
     };
   }
 
   const draft = await getCurrentDraft();
   if (!draft) {
-    return { ok: false, error: "Tu sesión expiró. Empieza de nuevo." };
+    return { ok: false, error: "Your session expired. Start over." };
   }
   if (!draft.providerId || !draft.planId) {
-    return { ok: false, error: "Elige un plan primero." };
+    return { ok: false, error: "Choose a plan first." };
   }
 
   const c = parsed.data.customer;

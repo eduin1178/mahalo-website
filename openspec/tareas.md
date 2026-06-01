@@ -1,6 +1,7 @@
 /opsx:explore
 
-## Revisar flujo de checkout
-1. Toda la ui del checkout debe estar en inglés
-2. En las cards que se selecciona el plan se debe destacar (fuente grande) el valor con autopago.
-3. Revisar que sucede, porque cuando el usuario registra los datos (paso 2), el flujo no permite continuar. No sale ningún error en la consola del navegador.
+- **Disclaimer.** Es necesario que el usuario acepte los términos y condiciones y la politica de privacidad antes de realizar la compra. Esto se puede hacer a través de una casilla de verificación que el usuario debe marcar antes de finalizar la compra. Sigue los lineamientos del documento adjunto
+
+- **Card de cierre.** Cuando el cliente termina el proceso de compra, se le muestra una card de cierre que le agradece por su compra y le proporciona información sobre el siguiente paso. Esta card debe ser mas destacada, mas impactante, quizá con un confeti o algo semilar.
+
+- **Cards de planes.** Las cards de los planes deben mostrar el logo del proveedor en lugar de la imagen que se usa actualmente para mostrar cada proveedor en la landing page. La imagen de cada proveedor se manteiene para la landing pero se debe adicionar una imagen distinta para el logo que se usará en las cards de elegir el plan.  Esto ayudará a los usuarios a identificar rápidamente el proveedor y a generar confianza en la compra. Si no se ha cargado la imagen de logo debe mostrar un texto fallback con el nombre del proveedor usando el color del respectivo proveedor..

@@ -29,12 +29,12 @@ export default async function CheckoutConfirmationPage() {
       return (
         <div className="flex flex-col gap-4">
           <h1 className="text-2xl font-semibold tracking-tight text-mahalo-navy-900 sm:text-3xl">
-            No pudimos enviar tu pedido
+            We couldn’t submit your order
           </h1>
           <p className="text-sm text-muted-foreground">{result.error}</p>
           <div>
             <Button render={<Link href="/checkout/schedule" />}>
-              Volver a la programación
+              Back to scheduling
             </Button>
           </div>
         </div>
@@ -46,26 +46,26 @@ export default async function CheckoutConfirmationPage() {
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold tracking-tight text-mahalo-navy-900 sm:text-3xl">
-          Tu pedido está confirmado
+          Your order is confirmed
         </h1>
       </header>
 
       <div className="rounded-lg border bg-card p-6 text-sm leading-relaxed text-foreground">
         <p>
-          ¡Gracias! Uno de nuestros agentes te contactará pronto para verificar
-          tu identidad (SSN y fecha de nacimiento) antes de activar el servicio.
-          Recibirás una confirmación por correo en cuanto se cree el pedido con
-          tu proveedor.
+          Thank you! One of our agents will contact you soon to verify your
+          identity (SSN and date of birth) before activating the service. You’ll
+          receive an email confirmation as soon as the order is created with your
+          provider.
         </p>
         <p className="mt-3 text-muted-foreground">
-          Referencia:{" "}
+          Reference:{" "}
           <span className="font-mono text-xs">{orderId.slice(0, 8)}</span>
         </p>
       </div>
 
       <div>
         <Button render={<Link href="/" />} variant="outline">
-          Volver al inicio
+          Back to home
         </Button>
       </div>
     </div>

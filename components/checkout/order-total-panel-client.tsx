@@ -26,12 +26,12 @@ export function OrderTotalPanelClient({
   return (
     <>
       <aside
-        aria-label="Resumen del pedido"
+        aria-label="Order summary"
         className="hidden lg:sticky lg:top-24 lg:block lg:self-start"
       >
         <div className="flex flex-col gap-4 rounded-xl border border-border bg-background p-5 shadow-sm">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Resumen
+            Summary
           </h2>
           {body}
         </div>
@@ -52,7 +52,7 @@ export function OrderTotalPanelClient({
           >
             <span className="flex flex-col gap-0.5">
               <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                Resumen
+                Summary
               </span>
               {summary}
             </span>

@@ -62,7 +62,7 @@ export function ScheduleForm({
     setServerError(null);
 
     if (!date || hour === null) {
-      setServerError("Elige un día y un horario.");
+      setServerError("Choose a day and a time.");
       return;
     }
 
@@ -86,10 +86,10 @@ export function ScheduleForm({
       <section className="flex flex-col gap-4 rounded-xl border border-border bg-background p-5">
         <div className="flex flex-col gap-1">
           <h2 className="text-base font-semibold text-mahalo-navy-900">
-            Elige un día
+            Choose a day
           </h2>
           <p className="text-sm text-muted-foreground">
-            La instalación está disponible de lunes a sábado.
+            Installation is available Monday through Saturday.
           </p>
         </div>
         <Calendar
@@ -112,15 +112,15 @@ export function ScheduleForm({
       >
         <div className="flex flex-col gap-1">
           <h2 className="text-base font-semibold text-mahalo-navy-900">
-            Elige un horario
+            Choose a time
           </h2>
           <p className="text-sm text-muted-foreground">
-            Los turnos van de 8:00 AM a 5:00 PM, cada hora.
+            Slots run from 8:00 AM to 5:00 PM, every hour.
           </p>
         </div>
         <div
           role="radiogroup"
-          aria-label="Horario de instalación"
+          aria-label="Installation time"
           className="grid grid-cols-2 gap-2 sm:grid-cols-5"
         >
           {HOURS.map((h) => {
@@ -164,7 +164,7 @@ export function ScheduleForm({
           variant="primary"
           disabled={pending || !date || hour === null}
         >
-          {pending ? "Enviando…" : "Confirmar pedido"}
+          {pending ? "Submitting…" : "Confirm order"}
         </Button>
       </div>
     </form>

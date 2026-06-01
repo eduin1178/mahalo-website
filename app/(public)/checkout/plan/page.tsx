@@ -33,7 +33,7 @@ export default async function CheckoutPlanPage() {
       <div className="flex flex-col gap-6">
         <Header zip={result.zip} />
         <NoCoverage
-          message={`Todavía no hay proveedores para el ZIP ${result.zip}.`}
+          message={`No providers available for ZIP ${result.zip} yet.`}
           variant="empty"
         />
       </div>
@@ -67,16 +67,16 @@ function Header({ zip }: { zip: string | null }) {
   return (
     <header className="flex flex-col gap-2">
       <h1 className="text-2xl font-semibold tracking-tight text-mahalo-navy-900 sm:text-3xl">
-        Elige tu plan
+        Choose your plan
       </h1>
       <p className="text-sm text-muted-foreground">
         {zip ? (
           <>
-            Planes disponibles para el ZIP{" "}
+            Plans available for ZIP{" "}
             <span className="font-mono text-mahalo-navy-900">{zip}</span>.
           </>
         ) : (
-          <>No pudimos verificar tu dirección. Empieza de nuevo.</>
+          <>We couldn’t verify your address. Start over.</>
         )}
       </p>
     </header>
@@ -93,11 +93,11 @@ function NoCoverage({
   return (
     <div className="flex flex-col items-start gap-4 rounded-xl border border-dashed border-border bg-surface px-6 py-10">
       <h2 className="text-lg font-semibold text-mahalo-navy-900">
-        {variant === "empty" ? "Aún sin cobertura" : "Tuvimos un problema"}
+        {variant === "empty" ? "No coverage yet" : "Something went wrong"}
       </h2>
       <p className="text-sm text-muted-foreground">{message}</p>
       <Button variant="outline" render={<Link href="/" />}>
-        Volver al inicio
+        Back to home
       </Button>
     </div>
   );

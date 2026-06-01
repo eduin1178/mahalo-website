@@ -44,11 +44,11 @@ export default async function CheckoutSchedulePage() {
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold tracking-tight text-mahalo-navy-900 sm:text-3xl">
-          Instalación y confirmación
+          Installation and confirmation
         </h1>
         <p className="text-sm text-muted-foreground">
-          Elige cuándo debe ir nuestro agente a instalar tu servicio. Revisa los
-          detalles antes de confirmar.
+          Choose when our technician should install your service. Review the
+          details before confirming.
         </p>
       </header>
 
@@ -67,7 +67,7 @@ export default async function CheckoutSchedulePage() {
           id="review-heading"
           className="text-base font-semibold text-mahalo-navy-900"
         >
-          Revisa tu pedido
+          Review your order
         </h2>
 
         <ReviewRow
@@ -80,18 +80,18 @@ export default async function CheckoutSchedulePage() {
               </span>
               <span className="block text-xs text-muted-foreground">
                 {breakdown.plan.speed} · {formatUsd(breakdown.planPriceStandard)}{" "}
-                /mes
+                /mo
               </span>
             </>
           }
         />
 
         <ReviewRow
-          label="Extras"
+          label="Add-ons"
           editHref="/checkout/plan"
           value={
             breakdown.addOns.length === 0 ? (
-              <span className="text-muted-foreground">Sin extras</span>
+              <span className="text-muted-foreground">No add-ons</span>
             ) : (
               <ul className="flex flex-col gap-0.5 text-sm text-mahalo-navy-900">
                 {breakdown.addOns.map((a) => (
@@ -100,7 +100,7 @@ export default async function CheckoutSchedulePage() {
                     className="flex items-center justify-between gap-3"
                   >
                     <span>{a.name}</span>
-                    <span>{formatUsd(Number(a.price))} /mes</span>
+                    <span>{formatUsd(Number(a.price))} /mo</span>
                   </li>
                 ))}
               </ul>
@@ -109,7 +109,7 @@ export default async function CheckoutSchedulePage() {
         />
 
         <ReviewRow
-          label="Contacto"
+          label="Contact"
           editHref="/checkout/details"
           value={
             customer ? (
@@ -122,13 +122,13 @@ export default async function CheckoutSchedulePage() {
                 </span>
               </>
             ) : (
-              <span className="text-muted-foreground">Sin datos</span>
+              <span className="text-muted-foreground">No info</span>
             )
           }
         />
 
         <ReviewRow
-          label="Dirección de instalación"
+          label="Installation address"
           editHref="/checkout/details"
           value={
             installation ? (
@@ -145,14 +145,14 @@ export default async function CheckoutSchedulePage() {
                 {installation.state} {installation.zip}
               </address>
             ) : (
-              <span className="text-muted-foreground">Sin dirección</span>
+              <span className="text-muted-foreground">No address</span>
             )
           }
         />
 
         {billing ? (
           <ReviewRow
-            label="Dirección de facturación"
+            label="Billing address"
             editHref="/checkout/details"
             value={
               <address className="not-italic text-sm text-mahalo-navy-900">
@@ -172,33 +172,33 @@ export default async function CheckoutSchedulePage() {
         ) : null}
 
         <ReviewRow
-          label="Pago"
+          label="Payment"
           editHref="/checkout/details"
           value={
             draft.autopayEnabled ? (
               <span className="text-mahalo-navy-900">
-                Pago automático activo
+                Autopay active
                 {draft.paymentData?.type === "card"
-                  ? " · Tarjeta"
+                  ? " · Card"
                   : draft.paymentData?.type === "ach"
-                    ? " · Banco (ACH)"
+                    ? " · Bank (ACH)"
                     : ""}
               </span>
             ) : (
-              <span className="text-mahalo-navy-900">Facturación estándar</span>
+              <span className="text-mahalo-navy-900">Standard billing</span>
             )
           }
         />
 
         <div className="mt-2 flex items-center justify-between border-t border-border pt-3">
           <span className="text-sm font-semibold text-mahalo-navy-900">
-            Total mensual
+            Monthly total
           </span>
           <span className="text-lg font-semibold text-mahalo-navy-900">
             {formatUsd(breakdown.monthlyTotal)}
             <span className="text-xs font-normal text-muted-foreground">
               {" "}
-              /mes
+              /mo
             </span>
           </span>
         </div>
@@ -226,7 +226,7 @@ function ReviewRow({
           href={editHref}
           className="text-xs font-medium text-mahalo-blue-600 hover:underline"
         >
-          Editar
+          Edit
         </Link>
       </div>
       <div className="text-sm">{value}</div>

@@ -14,11 +14,11 @@ import { phoneTypeValues, type PhoneType } from "@/lib/db/schema";
 import { cn } from "@/lib/utils";
 
 const addressFieldsSchema = z.object({
-  line1: z.string().trim().min(1, "Obligatorio").max(200),
+  line1: z.string().trim().min(1, "Required").max(200),
   line2: z.string().trim().max(200).optional().or(z.literal("")),
-  city: z.string().trim().min(1, "Obligatorio").max(100),
-  state: z.string().trim().length(2, "Usa el código de 2 letras"),
-  zip: z.string().trim().regex(/^\d{5}$/u, "Ingresa un ZIP de 5 dígitos"),
+  city: z.string().trim().min(1, "Required").max(100),
+  state: z.string().trim().length(2, "Use the 2-letter code"),
+  zip: z.string().trim().regex(/^\d{5}$/u, "Enter a 5-digit ZIP"),
 });
 
 const billingAddressLooseSchema = z.object({
@@ -34,37 +34,52 @@ const cardClientSchema = z.object({
     .string()
     .trim()
     .transform((v) => v.replace(/\s+/gu, ""))
-    .pipe(z.string().regex(/^\d{13,19}$/u, "Ingresa un número de tarjeta válido")),
-  holder: z.string().trim().min(2, "Obligatorio").max(120),
-  exp: z.string().trim().regex(/^(0[1-9]|1[0-2])\/\d{2}$/u, "Usa MM/AA"),
-  cvv: z.string().trim().regex(/^\d{3,4}$/u, "CVV inválido"),
+    .pipe(z.string().regex(/^\d{13,19}$/u, "Enter a valid card number")),
+  holder: z.string().trim().min(2, "Required").max(120),
+  exp: z.string().trim().regex(/^(0[1-9]|1[0-2])\/\d{2}$/u, "Use MM/YY"),
+  cvv: z.string().trim().regex(/^\d{3,4}$/u, "Invalid CVV"),
 });
 
 const achClientSchema = z.object({
-  routing: z.string().trim().regex(/^\d{9}$/u, "El routing debe tener 9 dígitos"),
-  account: z.string().trim().regex(/^\d{4,17}$/u, "Número de cuenta inválido"),
+  routing: z.string().trim().regex(/^\d{9}$/u, "Routing must be 9 digits"),
+  account: z.string().trim().regex(/^\d{4,17}$/u, "Invalid account number"),
   accountType: z.enum(["checking", "savings"]),
+});
+
+// Loose base schemas so empty default values never block submission.
+// Strict validation happens in superRefine only when autopay is enabled.
+const cardLooseSchema = z.object({
+  number: z.string().max(40).optional().or(z.literal("")),
+  holder: z.string().max(120).optional().or(z.literal("")),
+  exp: z.string().max(5).optional().or(z.literal("")),
+  cvv: z.string().max(4).optional().or(z.literal("")),
+});
+
+const achLooseSchema = z.object({
+  routing: z.string().max(9).optional().or(z.literal("")),
+  account: z.string().max(17).optional().or(z.literal("")),
+  accountType: z.enum(["checking", "savings"]).optional(),
 });
 
 const formSchema = z
   .object({
-    firstName: z.string().trim().min(1, "Obligatorio").max(80),
-    lastName: z.string().trim().min(1, "Obligatorio").max(80),
-    email: z.string().trim().email("Correo inválido").max(254),
+    firstName: z.string().trim().min(1, "Required").max(80),
+    lastName: z.string().trim().min(1, "Required").max(80),
+    email: z.string().trim().email("Invalid email").max(254),
     phone: z
       .string()
       .trim()
-      .min(7, "Teléfono inválido")
+      .min(7, "Invalid phone")
       .max(32)
-      .regex(/^[\d\s().+-]+$/u, "Teléfono inválido"),
+      .regex(/^[\d\s().+-]+$/u, "Invalid phone"),
     phoneType: z.enum(phoneTypeValues),
     installationAddress: addressFieldsSchema,
     useDifferentBilling: z.boolean(),
     billingAddress: billingAddressLooseSchema,
     autopay: z.boolean(),
     paymentMethod: z.enum(["card", "ach"]),
-    card: cardClientSchema.partial(),
-    ach: achClientSchema.partial(),
+    card: cardLooseSchema,
+    ach: achLooseSchema,
   })
   .superRefine((v, ctx) => {
     if (v.useDifferentBilling) {
@@ -280,11 +295,11 @@ export function Phase2Form({
         className="flex flex-col gap-4 rounded-xl border border-border bg-background p-5 scroll-mt-24"
       >
         <h2 className="text-base font-semibold text-mahalo-navy-900">
-          Contacto
+          Contact
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field
-            label="Nombre"
+            label="First name"
             id="firstName"
             error={errors.firstName?.message}
           >
@@ -295,7 +310,7 @@ export function Phase2Form({
             />
           </Field>
           <Field
-            label="Apellido"
+            label="Last name"
             id="lastName"
             error={errors.lastName?.message}
           >
@@ -305,7 +320,7 @@ export function Phase2Form({
               {...form.register("lastName")}
             />
           </Field>
-          <Field label="Correo" id="email" error={errors.email?.message}>
+          <Field label="Email" id="email" error={errors.email?.message}>
             <Input
               id="email"
               type="email"
@@ -313,7 +328,7 @@ export function Phase2Form({
               {...form.register("email")}
             />
           </Field>
-          <Field label="Teléfono" id="phone" error={errors.phone?.message}>
+          <Field label="Phone" id="phone" error={errors.phone?.message}>
             <Input
               id="phone"
               type="tel"
@@ -325,7 +340,7 @@ export function Phase2Form({
         </div>
         <fieldset className="flex flex-col gap-2">
           <legend className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Tipo de teléfono
+            Phone type
           </legend>
           <div className="flex gap-4">
             {phoneTypeValues.map((value) => (
@@ -351,7 +366,7 @@ export function Phase2Form({
 
       <AddressSection
         id={SECTION_IDS.installation}
-        title="Dirección de instalación"
+        title="Installation address"
         prefix="installationAddress"
         register={form.register}
         errors={errors.installationAddress as never}
@@ -369,17 +384,17 @@ export function Phase2Form({
           />
           <span className="flex flex-col gap-0.5">
             <span className="text-sm font-semibold text-mahalo-navy-900">
-              Usar una dirección de facturación distinta
+              Use a different billing address
             </span>
             <span className="text-xs text-muted-foreground">
-              Actívalo si la factura debe ir a otro lugar.
+              Turn this on if the bill should go somewhere else.
             </span>
           </span>
         </label>
 
         {useDifferentBilling ? (
           <AddressSection
-            title="Dirección de facturación"
+            title="Billing address"
             prefix="billingAddress"
             register={form.register}
             errors={errors.billingAddress as never}
@@ -395,10 +410,10 @@ export function Phase2Form({
         <div className="flex items-start justify-between gap-4">
           <div className="flex flex-col gap-1">
             <span className="text-base font-semibold text-mahalo-navy-900">
-              Pago automático
+              Autopay
             </span>
             <span className="text-sm text-muted-foreground">
-              Ahorra {formatUsd(savings)}/mes activando el cargo automático.
+              Save {formatUsd(savings)}/mo by enabling automatic payments.
             </span>
           </div>
           <label className="inline-flex cursor-pointer items-center gap-2 text-sm">
@@ -407,7 +422,7 @@ export function Phase2Form({
               <input
                 type="checkbox"
                 className="peer sr-only"
-                aria-label="Activar pago automático"
+                aria-label="Enable autopay"
                 {...form.register("autopay")}
               />
               <span
@@ -419,7 +434,7 @@ export function Phase2Form({
                 className="absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5"
               />
             </span>
-            <span className="font-medium text-mahalo-navy-900">Sí</span>
+            <span className="font-medium text-mahalo-navy-900">Yes</span>
           </label>
         </div>
 
@@ -433,11 +448,11 @@ export function Phase2Form({
             )}
           >
             <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-              Estándar
+              Standard
             </dt>
             <dd className="text-mahalo-navy-900">
               {formatUsd(monthlyStandard)}
-              <span className="text-xs text-muted-foreground"> /mes</span>
+              <span className="text-xs text-muted-foreground"> /mo</span>
             </dd>
           </div>
           <div
@@ -449,11 +464,11 @@ export function Phase2Form({
             )}
           >
             <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-              Con pago automático
+              With autopay
             </dt>
             <dd className="text-mahalo-navy-900">
               {formatUsd(monthlyAutopay)}
-              <span className="text-xs text-muted-foreground"> /mes</span>
+              <span className="text-xs text-muted-foreground"> /mo</span>
             </dd>
           </div>
         </dl>
@@ -461,7 +476,7 @@ export function Phase2Form({
         {autopay ? (
           <div className="flex flex-col gap-4">
             <h3 className="text-base font-semibold text-mahalo-navy-900">
-              Método de pago
+              Payment method
             </h3>
             <Tabs
               value={paymentMethod}
@@ -470,14 +485,14 @@ export function Phase2Form({
               }
             >
               <TabsList>
-                <TabsTrigger value="card">Tarjeta</TabsTrigger>
-                <TabsTrigger value="ach">Banco (ACH)</TabsTrigger>
+                <TabsTrigger value="card">Card</TabsTrigger>
+                <TabsTrigger value="ach">Bank (ACH)</TabsTrigger>
               </TabsList>
 
               <TabsContent value="card" className="pt-4">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <Field
-                    label="Número de tarjeta"
+                    label="Card number"
                     id="card-number"
                     error={errors.card?.number?.message}
                     className="sm:col-span-2"
@@ -491,7 +506,7 @@ export function Phase2Form({
                     />
                   </Field>
                   <Field
-                    label="Titular"
+                    label="Cardholder"
                     id="card-holder"
                     error={errors.card?.holder?.message}
                     className="sm:col-span-2"
@@ -499,12 +514,12 @@ export function Phase2Form({
                     <Input
                       id="card-holder"
                       autoComplete="cc-name"
-                      placeholder="Nombre completo en la tarjeta"
+                      placeholder="Full name on the card"
                       {...form.register("card.holder")}
                     />
                   </Field>
                   <Field
-                    label="Vencimiento (MM/AA)"
+                    label="Expiration (MM/YY)"
                     id="card-exp"
                     error={errors.card?.exp?.message}
                   >
@@ -512,7 +527,7 @@ export function Phase2Form({
                       id="card-exp"
                       inputMode="numeric"
                       autoComplete="cc-exp"
-                      placeholder="MM/AA"
+                      placeholder="MM/YY"
                       maxLength={5}
                       {...form.register("card.exp")}
                     />
@@ -537,7 +552,7 @@ export function Phase2Form({
               <TabsContent value="ach" className="pt-4">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <Field
-                    label="Número de routing"
+                    label="Routing number"
                     id="ach-routing"
                     error={errors.ach?.routing?.message}
                   >
@@ -545,12 +560,12 @@ export function Phase2Form({
                       id="ach-routing"
                       inputMode="numeric"
                       maxLength={9}
-                      placeholder="9 dígitos"
+                      placeholder="9 digits"
                       {...form.register("ach.routing")}
                     />
                   </Field>
                   <Field
-                    label="Número de cuenta"
+                    label="Account number"
                     id="ach-account"
                     error={errors.ach?.account?.message}
                   >
@@ -563,7 +578,7 @@ export function Phase2Form({
                   </Field>
                   <fieldset className="sm:col-span-2 flex flex-col gap-2">
                     <legend className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Tipo de cuenta
+                      Account type
                     </legend>
                     <div className="flex gap-4">
                       {(["checking", "savings"] as const).map((value) => (
@@ -578,7 +593,7 @@ export function Phase2Form({
                             {...form.register("ach.accountType")}
                           />
                           <span>
-                            {value === "checking" ? "Corriente" : "Ahorros"}
+                            {value === "checking" ? "Checking" : "Savings"}
                           </span>
                         </label>
                       ))}
@@ -588,8 +603,8 @@ export function Phase2Form({
               </TabsContent>
             </Tabs>
             <p className="text-xs text-muted-foreground">
-              Tus datos de pago se guardan de forma segura con el proveedor para
-              el cobro recurrente.
+              Your payment details are stored securely with the provider for
+              recurring billing.
             </p>
           </div>
         ) : null}
@@ -603,7 +618,7 @@ export function Phase2Form({
 
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <Button type="submit" variant="primary" disabled={pending}>
-          {pending ? "Guardando…" : "Continuar"}
+          {pending ? "Saving…" : "Continue"}
         </Button>
       </div>
     </form>
@@ -619,11 +634,11 @@ function scrollToSection(id: string) {
 function translatePhoneType(value: string): string {
   switch (value) {
     case "mobile":
-      return "Celular";
+      return "Mobile";
     case "home":
-      return "Casa";
+      return "Home";
     case "work":
-      return "Trabajo";
+      return "Work";
     default:
       return value;
   }
@@ -689,7 +704,7 @@ function AddressSection({
       <h2 className="text-base font-semibold text-mahalo-navy-900">{title}</h2>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field
-          label="Línea 1"
+          label="Address line 1"
           id={`${prefix}.line1`}
           error={errors?.line1?.message}
           className="sm:col-span-2"
@@ -701,7 +716,7 @@ function AddressSection({
           />
         </Field>
         <Field
-          label="Apto, suite (opcional)"
+          label="Apt, suite (optional)"
           id={`${prefix}.line2`}
           error={errors?.line2?.message}
           className="sm:col-span-2"
@@ -713,7 +728,7 @@ function AddressSection({
           />
         </Field>
         <Field
-          label="Ciudad"
+          label="City"
           id={`${prefix}.city`}
           error={errors?.city?.message}
         >
@@ -725,7 +740,7 @@ function AddressSection({
         </Field>
         <div className="grid grid-cols-2 gap-4">
           <Field
-            label="Estado"
+            label="State"
             id={`${prefix}.state`}
             error={errors?.state?.message}
           >

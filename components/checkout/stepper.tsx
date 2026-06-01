@@ -14,13 +14,13 @@ const PHASES: readonly Phase[] = [
   },
   {
     id: 2,
-    label: "Datos",
+    label: "Details",
     matches: (p) =>
       p === "/checkout/details" || p.startsWith("/checkout/details/"),
   },
   {
     id: 3,
-    label: "Instalación",
+    label: "Installation",
     matches: (p) =>
       p === "/checkout/schedule" || p.startsWith("/checkout/schedule/"),
   },
@@ -45,7 +45,7 @@ export function CheckoutStepper() {
 
   return (
     <ol
-      aria-label="Progreso del pedido"
+      aria-label="Order progress"
       className="flex items-center gap-2 pb-2 text-xs sm:gap-3 sm:text-sm"
     >
       {PHASES.map((phase, i) => {

@@ -65,7 +65,7 @@ export function Phase1Form({
 
   function onContinue() {
     if (!selectedPlanId) {
-      setError("Elige un plan para continuar.");
+      setError("Choose a plan to continue.");
       return;
     }
     setError(null);
@@ -126,10 +126,10 @@ export function Phase1Form({
               id="addons-heading"
               className="text-base font-semibold text-mahalo-navy-900"
             >
-              Agrega extras de {selected.entry.provider.name}
+              Add {selected.entry.provider.name} extras
             </h2>
             <p className="text-sm text-muted-foreground">
-              Opcionales. Puedes saltar este paso.
+              Optional. You can skip this step.
             </p>
           </div>
           <ul className="flex flex-col gap-3">
@@ -164,7 +164,7 @@ export function Phase1Form({
                         <span className="text-sm font-semibold text-mahalo-navy-900">
                           ${price}
                           <span className="text-xs font-normal text-muted-foreground">
-                            /mes
+                            /mo
                           </span>
                         </span>
                       </div>
@@ -195,7 +195,7 @@ export function Phase1Form({
           disabled={pending || !selectedPlanId}
           onClick={onContinue}
         >
-          {pending ? "Guardando…" : "Continuar"}
+          {pending ? "Saving…" : "Continue"}
         </Button>
       </div>
     </div>
@@ -258,15 +258,19 @@ function PlanOption({
           <p className="text-sm text-muted-foreground">{plan.speed}</p>
         </div>
 
-        <div className="flex items-baseline gap-2">
-          <span className="text-3xl font-bold text-mahalo-navy-900">
-            ${standard}
-          </span>
-          <span className="text-sm text-muted-foreground">/mes</span>
+        <div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-3xl font-bold text-mahalo-navy-900">
+              ${autopay}
+            </span>
+            <span className="text-sm font-medium text-mahalo-navy-900">
+              /mo with autopay
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            ${standard}/mo standard
+          </p>
         </div>
-        <p className="-mt-2 text-xs text-muted-foreground">
-          ${autopay}/mes con pago automático
-        </p>
 
         {features.length > 0 ? (
           <ul className="flex flex-col gap-1.5 text-sm text-foreground">
@@ -289,7 +293,7 @@ function PlanOption({
             variant={selected ? "primary" : "outline"}
             onClick={onSelect}
           >
-            {selected ? "Plan elegido" : "Elegir plan"}
+            {selected ? "Plan selected" : "Choose plan"}
           </Button>
         </div>
       </div>

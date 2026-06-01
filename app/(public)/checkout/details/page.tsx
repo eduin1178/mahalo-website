@@ -63,11 +63,10 @@ export default async function CheckoutDetailsPage() {
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold tracking-tight text-mahalo-navy-900 sm:text-3xl">
-          Tus datos
+          Your details
         </h1>
         <p className="text-sm text-muted-foreground">
-          Necesitamos tu información de contacto, las direcciones y tu
-          preferencia de pago.
+          We need your contact information, addresses, and payment preference.
         </p>
       </header>
 

@@ -36,17 +36,17 @@ export async function OrderTotalPanel() {
     renderBody(breakdown, provider)
   ) : (
     <p className="text-sm text-muted-foreground">
-      Elige un plan para ver el total.
+      Choose a plan to see the total.
     </p>
   );
 
   const summary = breakdown ? (
     <span className="font-semibold text-mahalo-navy-900">
       {formatUsd(breakdown.monthlyTotal)}
-      <span className="text-xs font-normal text-muted-foreground"> /mes</span>
+      <span className="text-xs font-normal text-muted-foreground"> /mo</span>
     </span>
   ) : (
-    <span className="text-sm text-muted-foreground">Elige un plan</span>
+    <span className="text-sm text-muted-foreground">Choose a plan</span>
   );
 
   return <OrderTotalPanelClient body={body} summary={summary} />;
@@ -71,19 +71,19 @@ function renderBody(breakdown: TotalBreakdown, provider: Provider | null) {
       <dl className="flex flex-col gap-2 border-t border-border pt-3">
         <Row
           label="Plan"
-          value={formatUsd(breakdown.planPriceStandard) + " /mes"}
+          value={formatUsd(breakdown.planPriceStandard) + " /mo"}
         />
         {breakdown.addOns.length > 0 ? (
           breakdown.addOns.map((a) => (
             <Row
               key={a.id}
               label={a.name}
-              value={formatUsd(Number(a.price)) + " /mes"}
+              value={formatUsd(Number(a.price)) + " /mo"}
               muted
             />
           ))
         ) : (
-          <Row label="Extras" value="Sin extras" muted />
+          <Row label="Add-ons" value="No add-ons" muted />
         )}
       </dl>
 
@@ -96,21 +96,21 @@ function renderBody(breakdown: TotalBreakdown, provider: Provider | null) {
         )}
       >
         <div className="flex items-center justify-between text-base">
-          <dt className="font-semibold text-mahalo-navy-900">Total mensual</dt>
+          <dt className="font-semibold text-mahalo-navy-900">Monthly total</dt>
           <dd className="font-semibold text-mahalo-navy-900">
             {formatUsd(breakdown.monthlyTotal)}
             <span className="text-xs font-normal text-muted-foreground">
               {" "}
-              /mes
+              /mo
             </span>
           </dd>
         </div>
         <p className="text-xs text-muted-foreground">
           {breakdown.autopay
-            ? "Tarifa con pago automático."
-            : `Activa el pago automático y ahorra ${formatUsd(
+            ? "Autopay rate."
+            : `Enable autopay and save ${formatUsd(
                 breakdown.monthlyStandard - breakdown.monthlyAutopay,
-              )} /mes.`}
+              )} /mo.`}
         </p>
       </dl>
     </div>

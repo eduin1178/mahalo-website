@@ -31,10 +31,10 @@ export default async function CheckoutEntryPage({
   return (
     <div className="flex flex-col items-start gap-3">
       <h1 className="text-2xl font-semibold tracking-tight text-mahalo-navy-900 sm:text-3xl">
-        Verificando disponibilidad…
+        Checking availability…
       </h1>
       <p className="text-sm text-muted-foreground">
-        Estamos buscando proveedores en tu zona.
+        We’re looking for providers in your area.
       </p>
       <DraftBootstrap zip={zip} address={address} />
     </div>

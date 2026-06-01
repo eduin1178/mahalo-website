@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 
 import { ScheduleForm } from "@/components/checkout/schedule-form";
+import { SectionCard } from "@/components/checkout/section-card";
 import { getDb } from "@/lib/db/client";
 import { customers, providers, type Customer } from "@/lib/db/schema";
 import { getCurrentDraft } from "@/lib/orders/draft";
@@ -59,10 +60,7 @@ export default async function CheckoutSchedulePage() {
         initialHour={existing?.getUTCHours()}
       />
 
-      <section
-        aria-labelledby="review-heading"
-        className="flex flex-col gap-4 rounded-xl border border-border bg-background p-5"
-      >
+      <SectionCard labelledBy="review-heading">
         <h2
           id="review-heading"
           className="text-base font-semibold text-mahalo-navy-900"
@@ -202,7 +200,7 @@ export default async function CheckoutSchedulePage() {
             </span>
           </span>
         </div>
-      </section>
+      </SectionCard>
     </div>
   );
 }

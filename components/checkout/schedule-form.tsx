@@ -5,6 +5,7 @@ import { useMemo, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { SectionCard } from "@/components/checkout/section-card";
 import { CONSENT_COPY } from "@/lib/legal/consent";
 import { scheduleInstallation } from "@/lib/orders/draft-actions";
 import { cn } from "@/lib/utils";
@@ -96,7 +97,7 @@ export function ScheduleForm({
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-6" noValidate>
-      <section className="flex flex-col gap-4 rounded-xl border border-border bg-background p-5">
+      <SectionCard>
         <div className="flex flex-col gap-1">
           <h2 className="text-base font-semibold text-mahalo-navy-900">
             Choose a day
@@ -115,14 +116,9 @@ export function ScheduleForm({
           disabled={[{ before: today }, { dayOfWeek: [0] }]}
           className="self-start"
         />
-      </section>
+      </SectionCard>
 
-      <section
-        className={cn(
-          "flex flex-col gap-4 rounded-xl border border-border bg-background p-5",
-          !date && "opacity-60",
-        )}
-      >
+      <SectionCard className={cn(!date && "opacity-60")}>
         <div className="flex flex-col gap-1">
           <h2 className="text-base font-semibold text-mahalo-navy-900">
             Choose a time
@@ -163,9 +159,9 @@ export function ScheduleForm({
             );
           })}
         </div>
-      </section>
+      </SectionCard>
 
-      <div className="flex flex-col gap-2 rounded-xl border border-border bg-background p-5">
+      <SectionCard>
         <label className="flex cursor-pointer items-start gap-3 text-sm text-mahalo-navy-900">
           <input
             type="checkbox"
@@ -204,7 +200,7 @@ export function ScheduleForm({
             {consentError}
           </p>
         ) : null}
-      </div>
+      </SectionCard>
 
       {serverError ? (
         <p role="alert" className="text-sm text-destructive">
@@ -216,6 +212,8 @@ export function ScheduleForm({
         <Button
           type="submit"
           variant="primary"
+          size="lg"
+          className="h-12 w-full rounded-xl px-10 text-base font-semibold sm:w-auto"
           disabled={pending || !date || hour === null || !consent}
         >
           {pending ? "Submitting…" : "Confirm order"}

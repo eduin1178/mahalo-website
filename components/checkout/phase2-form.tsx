@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SectionCard } from "@/components/checkout/section-card";
 import { finalizePhase2 } from "@/lib/orders/draft-actions";
 import { phoneTypeValues, type PhoneType } from "@/lib/db/schema";
 import { cn } from "@/lib/utils";
@@ -639,39 +640,6 @@ function translatePhoneType(value: string): string {
     default:
       return value;
   }
-}
-
-const SECTION_CARD_CLASS =
-  "relative overflow-hidden rounded-3xl premium-light-card p-6 md:p-7 scroll-mt-24";
-
-function SectionDecor() {
-  return (
-    <>
-      <div
-        className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-mahalo-cyan-500/15 blur-3xl"
-        aria-hidden="true"
-      />
-      <div
-        className="pointer-events-none absolute inset-x-6 top-0 h-px bg-linear-to-r from-transparent via-white to-transparent"
-        aria-hidden="true"
-      />
-    </>
-  );
-}
-
-function SectionCard({
-  id,
-  children,
-}: {
-  id?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section id={id} className={SECTION_CARD_CLASS}>
-      <SectionDecor />
-      <div className="relative flex flex-col gap-4">{children}</div>
-    </section>
-  );
 }
 
 function Field({

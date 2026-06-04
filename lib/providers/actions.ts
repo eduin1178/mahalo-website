@@ -8,6 +8,7 @@ import { getDb } from "@/lib/db/client";
 import { providers, type Provider } from "@/lib/db/schema";
 import { requireRole } from "@/lib/clerk/require-role";
 import { deleteObject, getPublicUrl, putObject } from "@/lib/storage";
+import { providerImageTypes, type ProviderImageType } from "./image-types";
 
 const HEX_COLOR = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
 
@@ -174,11 +175,6 @@ const ALLOWED_IMAGE_TYPES: Record<string, string> = {
   "image/svg+xml": "svg",
 };
 const MAX_IMAGE_BYTES = 1024 * 1024; // 1MB
-
-// The two independent provider image types. Each maps to its own DB column and
-// its own R2 key suffix under the per-provider folder `providers/{id}/`.
-export const providerImageTypes = ["landing", "logo"] as const;
-export type ProviderImageType = (typeof providerImageTypes)[number];
 
 const IMAGE_FIELD = {
   landing: "landingImageUrl",

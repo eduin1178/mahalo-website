@@ -7,10 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import {
-  uploadProviderImage,
-  type ProviderImageType,
-} from "@/lib/providers/actions";
+import { uploadProviderImage } from "@/lib/providers/actions";
+import type { ProviderImageType } from "@/lib/providers/image-types";
 
 const MAX_BYTES = 1024 * 1024;
 const ACCEPT = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];

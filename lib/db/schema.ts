@@ -106,21 +106,6 @@ export type AddressJson = {
   zip: string;
 };
 
-export type CardPayment = {
-  type: "card";
-  number: string;
-  holder: string;
-  exp: string;
-  cvv: string;
-};
-export type AchPayment = {
-  type: "ach";
-  routing: string;
-  account: string;
-  accountType: "checking" | "savings";
-};
-export type PaymentData = CardPayment | AchPayment;
-
 export const orders = pgTable("orders", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   customerId: uuid("customer_id").references(() => customers.id, { onDelete: "set null" }),
@@ -129,7 +114,6 @@ export const orders = pgTable("orders", {
   addOnIds: jsonb("add_on_ids").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
   status: varchar("status", { length: 24 }).notNull().default("Draft").$type<OrderStatus>(),
   autopayEnabled: boolean("autopay_enabled").notNull().default(false),
-  paymentData: jsonb("payment_data").$type<PaymentData | null>(),
   installationAddress: jsonb("installation_address").$type<AddressJson | null>(),
   billingAddress: jsonb("billing_address").$type<AddressJson | null>(),
   zipCode: varchar("zip_code", { length: 5 }),

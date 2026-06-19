@@ -4,7 +4,6 @@ import { SectionCard } from "@/components/checkout/section-card";
 import type {
   AddressJson,
   Customer,
-  PaymentData,
   Provider,
 } from "@/lib/db/schema";
 import { formatUsd, type TotalBreakdown } from "@/lib/orders/totals";
@@ -16,7 +15,6 @@ export type ReviewOrderCardProps = {
   installation: AddressJson | null;
   billing: AddressJson | null;
   autopayEnabled: boolean;
-  paymentType: PaymentData["type"] | null;
 };
 
 export function ReviewOrderCard({
@@ -26,7 +24,6 @@ export function ReviewOrderCard({
   installation,
   billing,
   autopayEnabled,
-  paymentType,
 }: ReviewOrderCardProps) {
   return (
     <SectionCard labelledBy="review-heading">
@@ -144,12 +141,7 @@ export function ReviewOrderCard({
         value={
           autopayEnabled ? (
             <span className="text-mahalo-navy-900">
-              Autopay active
-              {paymentType === "card"
-                ? " · Card"
-                : paymentType === "ach"
-                  ? " · Bank (ACH)"
-                  : ""}
+              Autopay active · set up by phone
             </span>
           ) : (
             <span className="text-mahalo-navy-900">Standard billing</span>

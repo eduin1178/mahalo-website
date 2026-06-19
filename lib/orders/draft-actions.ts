@@ -254,56 +254,9 @@ const customerInfoSchema = z
     }
   });
 
-function luhnValid(digits: string): boolean {
-  let sum = 0;
-  let dbl = false;
-  for (let i = digits.length - 1; i >= 0; i--) {
-    let d = digits.charCodeAt(i) - 48;
-    if (d < 0 || d > 9) return false;
-    if (dbl) {
-      d *= 2;
-      if (d > 9) d -= 9;
-    }
-    sum += d;
-    dbl = !dbl;
-  }
-  return sum > 0 && sum % 10 === 0;
-}
-
-const cardSchema = z.object({
-  type: z.literal("card"),
-  number: z
-    .string()
-    .trim()
-    .transform((v) => v.replace(/\s+/gu, ""))
-    .pipe(
-      z
-        .string()
-        .regex(/^\d{13,19}$/u, "Enter a valid card number")
-        .refine(luhnValid, "Enter a valid card number"),
-    ),
-  holder: z.string().trim().min(2, "Required").max(120),
-  exp: z
-    .string()
-    .trim()
-    .regex(/^(0[1-9]|1[0-2])\/\d{2}$/u, "Use MM/YY"),
-  cvv: z.string().trim().regex(/^\d{3,4}$/u, "Invalid CVV"),
-});
-
-const achSchema = z.object({
-  type: z.literal("ach"),
-  routing: z.string().trim().regex(/^\d{9}$/u, "Routing must be 9 digits"),
-  account: z.string().trim().regex(/^\d{4,17}$/u, "Invalid account number"),
-  accountType: z.enum(["checking", "savings"]),
-});
-
-const savePaymentSchema = z.discriminatedUnion("autopay", [
-  z.object({ autopay: z.literal(false) }),
-  z.object({
-    autopay: z.literal(true),
-    payment: z.discriminatedUnion("type", [cardSchema, achSchema]),
-  }),
-]);
+// Autopay is a price preference only. Payment instruments are collected over
+// the phone by an agent, never captured or stored by the site.
+const savePaymentSchema = z.object({ autopay: z.boolean() });
 
 const finalizePhase2Schema = z.object({
   customer: customerInfoSchema,
@@ -384,9 +337,6 @@ export async function finalizePhase2(
       billingAddress: billing,
       zipCode: installation.zip,
       autopayEnabled: parsed.data.payment.autopay,
-      paymentData: parsed.data.payment.autopay
-        ? parsed.data.payment.payment
-        : null,
       updatedAt: new Date(),
     })
     .where(eq(orders.id, draft.id));
@@ -484,9 +434,6 @@ export async function submitOrder(): Promise<SubmitOrderResult> {
     !draft.scheduledAt
   ) {
     return { ok: false, error: "Order is incomplete." };
-  }
-  if (draft.autopayEnabled && !draft.paymentData) {
-    return { ok: false, error: "Payment details are missing." };
   }
   if (!draft.termsAcceptedAt) {
     return {

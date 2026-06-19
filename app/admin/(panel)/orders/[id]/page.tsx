@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { OrderTimeline } from "@/components/admin/orders/order-timeline";
-import { PaymentDataView } from "@/components/admin/orders/payment-data-view";
 import { RescheduleForm } from "@/components/admin/orders/reschedule-form";
 import { StatusChanger } from "@/components/admin/orders/status-changer";
 import { StatusBadge } from "@/components/brand/StatusBadge";
@@ -169,10 +168,17 @@ export default async function OrderDetailPage({
           </Section>
 
           <Section title="Payment">
-            <PaymentDataView
-              data={order.paymentData}
-              autopayEnabled={order.autopayEnabled}
-            />
+            <dl className="grid gap-2 text-sm">
+              <Field
+                label="Autopay"
+                value={order.autopayEnabled ? "Enrolled" : "Standard billing"}
+              />
+            </dl>
+            <p className="mt-3 text-xs text-muted-foreground">
+              {order.autopayEnabled
+                ? "Customer chose autopay. Collect the payment method by phone — it is never captured on the site."
+                : "Standard billing. No payment method is collected on the site."}
+            </p>
           </Section>
         </div>
 

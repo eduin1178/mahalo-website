@@ -14,7 +14,6 @@ import {
   type Order,
   type OrderStatus,
   type OrderStatusHistoryRow,
-  type PaymentData,
   type Plan,
   type Provider,
 } from "@/lib/db/schema";
@@ -203,4 +202,4 @@ export async function getOrderById(id: string): Promise<OrderDetail | null> {
   };
 }
 
-export type { AddressJson, PaymentData };
+export type { AddressJson };

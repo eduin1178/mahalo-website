@@ -1,3 +1,0 @@
-- Resltar el color del botón Choose plan
-- Usar el logi en las cards de seleccionar los planes
-- Resaltar la 

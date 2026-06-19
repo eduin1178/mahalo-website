@@ -65,7 +65,6 @@ export default async function CheckoutSchedulePage() {
             installation={installation}
             billing={billing}
             autopayEnabled={draft.autopayEnabled ?? false}
-            paymentType={draft.paymentData?.type ?? null}
           />
         }
       />

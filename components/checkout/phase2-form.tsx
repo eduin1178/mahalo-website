@@ -8,7 +8,6 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SectionCard } from "@/components/checkout/section-card";
 import { finalizePhase2 } from "@/lib/orders/draft-actions";
 import { phoneTypeValues, type PhoneType } from "@/lib/db/schema";
@@ -30,38 +29,6 @@ const billingAddressLooseSchema = z.object({
   zip: z.string().max(10).optional().or(z.literal("")),
 });
 
-const cardClientSchema = z.object({
-  number: z
-    .string()
-    .trim()
-    .transform((v) => v.replace(/\s+/gu, ""))
-    .pipe(z.string().regex(/^\d{13,19}$/u, "Enter a valid card number")),
-  holder: z.string().trim().min(2, "Required").max(120),
-  exp: z.string().trim().regex(/^(0[1-9]|1[0-2])\/\d{2}$/u, "Use MM/YY"),
-  cvv: z.string().trim().regex(/^\d{3,4}$/u, "Invalid CVV"),
-});
-
-const achClientSchema = z.object({
-  routing: z.string().trim().regex(/^\d{9}$/u, "Routing must be 9 digits"),
-  account: z.string().trim().regex(/^\d{4,17}$/u, "Invalid account number"),
-  accountType: z.enum(["checking", "savings"]),
-});
-
-// Loose base schemas so empty default values never block submission.
-// Strict validation happens in superRefine only when autopay is enabled.
-const cardLooseSchema = z.object({
-  number: z.string().max(40).optional().or(z.literal("")),
-  holder: z.string().max(120).optional().or(z.literal("")),
-  exp: z.string().max(5).optional().or(z.literal("")),
-  cvv: z.string().max(4).optional().or(z.literal("")),
-});
-
-const achLooseSchema = z.object({
-  routing: z.string().max(9).optional().or(z.literal("")),
-  account: z.string().max(17).optional().or(z.literal("")),
-  accountType: z.enum(["checking", "savings"]).optional(),
-});
-
 const formSchema = z
   .object({
     firstName: z.string().trim().min(1, "Required").max(80),
@@ -78,9 +45,6 @@ const formSchema = z
     useDifferentBilling: z.boolean(),
     billingAddress: billingAddressLooseSchema,
     autopay: z.boolean(),
-    paymentMethod: z.enum(["card", "ach"]),
-    card: cardLooseSchema,
-    ach: achLooseSchema,
   })
   .superRefine((v, ctx) => {
     if (v.useDifferentBilling) {
@@ -91,29 +55,6 @@ const formSchema = z
             ...issue,
             path: ["billingAddress", ...(issue.path as string[])],
           });
-        }
-      }
-    }
-    if (v.autopay) {
-      if (v.paymentMethod === "card") {
-        const result = cardClientSchema.safeParse(v.card);
-        if (!result.success) {
-          for (const issue of result.error.issues) {
-            ctx.addIssue({
-              ...issue,
-              path: ["card", ...(issue.path as string[])],
-            });
-          }
-        }
-      } else {
-        const result = achClientSchema.safeParse(v.ach);
-        if (!result.success) {
-          for (const issue of result.error.issues) {
-            ctx.addIssue({
-              ...issue,
-              path: ["ach", ...(issue.path as string[])],
-            });
-          }
         }
       }
     }
@@ -143,7 +84,6 @@ export type Phase2FormInitialValues = {
     zip: string;
   };
   autopay: boolean;
-  paymentMethod: "card" | "ach";
 };
 
 type Props = {
@@ -182,7 +122,6 @@ function firstInvalidSection(
   }
   if (errors.installationAddress) return SECTION_IDS.installation;
   if (errors.billingAddress) return SECTION_IDS.billing;
-  if (errors.card || errors.ach) return SECTION_IDS.payment;
   return null;
 }
 
@@ -196,17 +135,12 @@ export function Phase2Form({
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      ...initial,
-      card: { number: "", holder: "", exp: "", cvv: "" },
-      ach: { routing: "", account: "", accountType: "checking" },
-    },
+    defaultValues: initial,
     mode: "onBlur",
   });
 
   const useDifferentBilling = form.watch("useDifferentBilling");
   const autopay = form.watch("autopay");
-  const paymentMethod = form.watch("paymentMethod");
 
   const savings = Math.max(0, monthlyStandard - monthlyAutopay);
 
@@ -236,35 +170,10 @@ export function Phase2Form({
         : undefined,
     };
 
-    const paymentPayload = (() => {
-      if (!values.autopay) return { autopay: false as const };
-      if (values.paymentMethod === "card") {
-        return {
-          autopay: true as const,
-          payment: {
-            type: "card" as const,
-            number: values.card?.number ?? "",
-            holder: values.card?.holder ?? "",
-            exp: values.card?.exp ?? "",
-            cvv: values.card?.cvv ?? "",
-          },
-        };
-      }
-      return {
-        autopay: true as const,
-        payment: {
-          type: "ach" as const,
-          routing: values.ach?.routing ?? "",
-          account: values.ach?.account ?? "",
-          accountType: values.ach?.accountType ?? "checking",
-        },
-      };
-    })();
-
     startTransition(async () => {
       const result = await finalizePhase2({
         customer: customerPayload,
-        payment: paymentPayload,
+        payment: { autopay: values.autopay },
       });
       if (result && !result.ok) {
         setServerError(result.error);
@@ -504,137 +413,14 @@ export function Phase2Form({
         </div>
 
         {autopay ? (
-          <div className="flex flex-col gap-4">
-            <h3 className="text-base font-semibold text-mahalo-navy-900">
-              Payment method
-            </h3>
-            <Tabs
-              value={paymentMethod}
-              onValueChange={(v) =>
-                form.setValue("paymentMethod", (v as "card" | "ach") ?? "card")
-              }
-            >
-              <TabsList>
-                <TabsTrigger value="card">Card</TabsTrigger>
-                <TabsTrigger value="ach">Bank (ACH)</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="card" className="pt-4">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Field
-                    label="Card number"
-                    id="card-number"
-                    error={errors.card?.number?.message}
-                    className="sm:col-span-2"
-                  >
-                    <Input
-                      id="card-number"
-                      inputMode="numeric"
-                      autoComplete="cc-number"
-                      placeholder="4242 4242 4242 4242"
-                      {...form.register("card.number")}
-                    />
-                  </Field>
-                  <Field
-                    label="Cardholder"
-                    id="card-holder"
-                    error={errors.card?.holder?.message}
-                    className="sm:col-span-2"
-                  >
-                    <Input
-                      id="card-holder"
-                      autoComplete="cc-name"
-                      placeholder="Full name on the card"
-                      {...form.register("card.holder")}
-                    />
-                  </Field>
-                  <Field
-                    label="Expiration (MM/YY)"
-                    id="card-exp"
-                    error={errors.card?.exp?.message}
-                  >
-                    <Input
-                      id="card-exp"
-                      inputMode="numeric"
-                      autoComplete="cc-exp"
-                      placeholder="MM/YY"
-                      maxLength={5}
-                      {...form.register("card.exp")}
-                    />
-                  </Field>
-                  <Field
-                    label="CVV"
-                    id="card-cvv"
-                    error={errors.card?.cvv?.message}
-                  >
-                    <Input
-                      id="card-cvv"
-                      inputMode="numeric"
-                      autoComplete="cc-csc"
-                      placeholder="123"
-                      maxLength={4}
-                      {...form.register("card.cvv")}
-                    />
-                  </Field>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="ach" className="pt-4">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Field
-                    label="Routing number"
-                    id="ach-routing"
-                    error={errors.ach?.routing?.message}
-                  >
-                    <Input
-                      id="ach-routing"
-                      inputMode="numeric"
-                      maxLength={9}
-                      placeholder="9 digits"
-                      {...form.register("ach.routing")}
-                    />
-                  </Field>
-                  <Field
-                    label="Account number"
-                    id="ach-account"
-                    error={errors.ach?.account?.message}
-                  >
-                    <Input
-                      id="ach-account"
-                      inputMode="numeric"
-                      maxLength={17}
-                      {...form.register("ach.account")}
-                    />
-                  </Field>
-                  <fieldset className="sm:col-span-2 flex flex-col gap-2">
-                    <legend className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Account type
-                    </legend>
-                    <div className="flex gap-4">
-                      {(["checking", "savings"] as const).map((value) => (
-                        <label
-                          key={value}
-                          className="flex cursor-pointer items-center gap-2 text-sm text-mahalo-navy-900"
-                        >
-                          <input
-                            type="radio"
-                            value={value}
-                            className="size-4 cursor-pointer accent-mahalo-blue-600"
-                            {...form.register("ach.accountType")}
-                          />
-                          <span>
-                            {value === "checking" ? "Checking" : "Savings"}
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  </fieldset>
-                </div>
-              </TabsContent>
-            </Tabs>
-            <p className="text-xs text-muted-foreground">
-              Your payment details are stored securely with the provider for
-              recurring billing.
+          <div className="rounded-lg border border-mahalo-blue-600/30 bg-surface p-4">
+            <p className="text-sm font-semibold text-mahalo-navy-900">
+              You&apos;ve selected autopay.
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              A Mahalo agent will call you to securely set up your payment
+              method by phone. We never collect card or bank details on this
+              site.
             </p>
           </div>
         ) : null}

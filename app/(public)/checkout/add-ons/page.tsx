@@ -7,5 +7,6 @@ export const dynamic = "force-dynamic";
 export default async function LegacyAddOnsRedirect() {
   const draft = await getCurrentDraft();
   if (!draft) redirect("/");
-  redirect("/checkout/plan");
+  // The customize page guards itself (no plan -> /plan, no add-ons -> /details).
+  redirect("/checkout/customize");
 }

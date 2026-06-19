@@ -55,7 +55,9 @@ export default async function CheckoutDetailsPage() {
       state: billing?.state ?? "",
       zip: billing?.zip ?? "",
     },
-    autopay: draft.autopayEnabled ?? false,
+    // Promote autopay: default to ON for a fresh draft. A returning user who
+    // already completed this step (customerId set) keeps their saved choice.
+    autopay: draft.customerId ? draft.autopayEnabled : true,
     paymentMethod: draft.paymentData?.type === "ach" ? "ach" : "card",
   };
 

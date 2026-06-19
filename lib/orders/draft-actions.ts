@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { findProvidersByZip } from "@/lib/coverage/queries";
+import { providerHasActiveAddOns } from "@/lib/add-ons/queries";
 import { getDb } from "@/lib/db/client";
 import {
   addOns,
@@ -94,18 +95,16 @@ export async function clearDraftCookie(): Promise<void> {
   store.delete(DRAFT_COOKIE_NAME);
 }
 
-const finalizePhase1Schema = z.object({
+const finalizePlanSchema = z.object({
   planId: z.string().uuid(),
-  addOnIds: z.array(z.string().uuid()).max(50),
 });
 
-export type FinalizePhase1Result = { ok: false; error: string };
+export type FinalizePlanResult = { ok: false; error: string };
 
-export async function finalizePhase1(input: {
+export async function finalizePlan(input: {
   planId: string;
-  addOnIds: string[];
-}): Promise<FinalizePhase1Result> {
-  const parsed = finalizePhase1Schema.safeParse(input);
+}): Promise<FinalizePlanResult> {
+  const parsed = finalizePlanSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: "Invalid selection." };
   }
@@ -133,6 +132,51 @@ export async function finalizePhase1(input: {
     return { ok: false, error: "This plan isn't available for your ZIP." };
   }
 
+  // Persist the chosen plan and clear any add-ons selected for a previously
+  // chosen plan (a different provider may have different add-ons).
+  await db
+    .update(orders)
+    .set({
+      providerId: plan.providerId,
+      planId: plan.id,
+      addOnIds: [],
+      updatedAt: new Date(),
+    })
+    .where(eq(orders.id, draft.id));
+
+  // Mark the shared checkout layout stale so OrderTotalPanel (rendered in the
+  // layout) re-fetches the updated draft on the redirect navigation.
+  revalidatePath("/checkout", "layout");
+
+  // Decide the skip here (not on the Customize page) so a no-add-ons funnel
+  // never enters /customize — keeping browser-Back from Details clean.
+  const hasAddOns = await providerHasActiveAddOns(plan.providerId);
+  redirect(hasAddOns ? "/checkout/customize" : "/checkout/details");
+}
+
+const finalizeAddOnsSchema = z.object({
+  addOnIds: z.array(z.string().uuid()).max(50),
+});
+
+export type FinalizeAddOnsResult = { ok: false; error: string };
+
+export async function finalizeAddOns(input: {
+  addOnIds: string[];
+}): Promise<FinalizeAddOnsResult> {
+  const parsed = finalizeAddOnsSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: "Invalid selection." };
+  }
+
+  const draft = await getCurrentDraft();
+  if (!draft) {
+    return { ok: false, error: "Your session expired. Start over." };
+  }
+  if (!draft.providerId || !draft.planId) {
+    return { ok: false, error: "Choose a plan first." };
+  }
+
+  const db = getDb();
   const requestedAddOnIds = Array.from(new Set(parsed.data.addOnIds));
   let validatedAddOnIds: string[] = [];
 
@@ -143,7 +187,7 @@ export async function finalizePhase1(input: {
       .where(
         and(
           inArray(addOns.id, requestedAddOnIds),
-          eq(addOns.providerId, plan.providerId),
+          eq(addOns.providerId, draft.providerId),
           eq(addOns.isActive, true),
         ),
       );
@@ -158,12 +202,7 @@ export async function finalizePhase1(input: {
 
   await db
     .update(orders)
-    .set({
-      providerId: plan.providerId,
-      planId: plan.id,
-      addOnIds: validatedAddOnIds,
-      updatedAt: new Date(),
-    })
+    .set({ addOnIds: validatedAddOnIds, updatedAt: new Date() })
     .where(eq(orders.id, draft.id));
 
   // Mark the shared checkout layout stale so OrderTotalPanel (rendered in the
@@ -358,14 +397,12 @@ export async function finalizePhase2(
   redirect("/checkout/schedule");
 }
 
-const SCHEDULE_HOUR_MIN = 8;
-const SCHEDULE_HOUR_MAX = 17;
-
 const scheduleSchema = z.object({
   year: z.number().int().min(2024).max(2100),
   month: z.number().int().min(1).max(12),
   day: z.number().int().min(1).max(31),
-  hour: z.number().int().min(SCHEDULE_HOUR_MIN).max(SCHEDULE_HOUR_MAX),
+  // Only the three fixed window start hours are accepted.
+  hour: z.union([z.literal(8), z.literal(10), z.literal(14)]),
   consent: z.literal(true),
 });
 

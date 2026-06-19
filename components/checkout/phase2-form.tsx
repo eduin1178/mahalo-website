@@ -434,40 +434,6 @@ export function Phase2Form({
           className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2"
         >
           <button
-            ref={standardOptionRef}
-            type="button"
-            role="radio"
-            aria-checked={!autopay}
-            tabIndex={!autopay ? 0 : -1}
-            onClick={() => selectAutopay(false)}
-            onKeyDown={(e) => {
-              if (
-                e.key === "ArrowRight" ||
-                e.key === "ArrowDown" ||
-                e.key === "ArrowLeft" ||
-                e.key === "ArrowUp"
-              ) {
-                e.preventDefault();
-                selectAutopay(true);
-                autopayOptionRef.current?.focus();
-              }
-            }}
-            className={cn(
-              "flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
-              !autopay
-                ? "border-mahalo-navy-900/40 bg-surface ring-1 ring-mahalo-navy-900/20"
-                : "border-border bg-background hover:border-mahalo-navy-900/30",
-            )}
-          >
-            <span className="text-xs uppercase tracking-wide text-muted-foreground">
-              Standard
-            </span>
-            <span className="text-mahalo-navy-900">
-              {formatUsd(monthlyStandard)}
-              <span className="text-xs text-muted-foreground"> /mo</span>
-            </span>
-          </button>
-          <button
             ref={autopayOptionRef}
             type="button"
             role="radio"
@@ -498,6 +464,40 @@ export function Phase2Form({
             </span>
             <span className="text-mahalo-navy-900">
               {formatUsd(monthlyAutopay)}
+              <span className="text-xs text-muted-foreground"> /mo</span>
+            </span>
+          </button>
+          <button
+            ref={standardOptionRef}
+            type="button"
+            role="radio"
+            aria-checked={!autopay}
+            tabIndex={!autopay ? 0 : -1}
+            onClick={() => selectAutopay(false)}
+            onKeyDown={(e) => {
+              if (
+                e.key === "ArrowRight" ||
+                e.key === "ArrowDown" ||
+                e.key === "ArrowLeft" ||
+                e.key === "ArrowUp"
+              ) {
+                e.preventDefault();
+                selectAutopay(true);
+                autopayOptionRef.current?.focus();
+              }
+            }}
+            className={cn(
+              "flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+              !autopay
+                ? "border-mahalo-navy-900/40 bg-surface ring-1 ring-mahalo-navy-900/20"
+                : "border-border bg-background hover:border-mahalo-navy-900/30",
+            )}
+          >
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
+              Standard
+            </span>
+            <span className="text-mahalo-navy-900">
+              {formatUsd(monthlyStandard)}
               <span className="text-xs text-muted-foreground"> /mo</span>
             </span>
           </button>

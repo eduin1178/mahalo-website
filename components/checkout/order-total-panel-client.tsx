@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 
 const HIDDEN_PATHS = new Set<string>([
   "/checkout",
+  "/checkout/plan",
   "/checkout/confirmation",
 ]);
 

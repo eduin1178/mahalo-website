@@ -6,7 +6,6 @@ import {
   type Phase1ProviderEntry,
 } from "@/components/checkout/phase1-form";
 import { Button } from "@/components/ui/button";
-import { listAddOnsByProvider } from "@/lib/add-ons/queries";
 import { getAvailableProviders } from "@/lib/coverage/availability";
 import { getCurrentDraft } from "@/lib/orders/draft";
 
@@ -40,25 +39,14 @@ export default async function CheckoutPlanPage() {
     );
   }
 
-  const entries: Phase1ProviderEntry[] = await Promise.all(
-    result.providers.map(async ({ provider, plans }) => {
-      const all = await listAddOnsByProvider(provider.id);
-      return {
-        provider,
-        plans,
-        addOns: all.filter((a) => a.isActive),
-      };
-    }),
+  const entries: Phase1ProviderEntry[] = result.providers.map(
+    ({ provider, plans }) => ({ provider, plans }),
   );
 
   return (
     <div className="flex flex-col gap-6">
       <Header zip={result.zip} />
-      <Phase1Form
-        entries={entries}
-        initialPlanId={draft.planId ?? null}
-        initialAddOnIds={Array.isArray(draft.addOnIds) ? draft.addOnIds : []}
-      />
+      <Phase1Form entries={entries} initialPlanId={draft.planId ?? null} />
     </div>
   );
 }

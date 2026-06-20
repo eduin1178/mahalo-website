@@ -7,6 +7,7 @@ import type {
   Provider,
 } from "@/lib/db/schema";
 import { formatUsd, type TotalBreakdown } from "@/lib/orders/totals";
+import { formatSpeed } from "@/lib/plans/speed";
 
 export type ReviewOrderCardProps = {
   breakdown: TotalBreakdown;
@@ -43,8 +44,8 @@ export function ReviewOrderCard({
               {provider?.name ?? "Proveedor"} · {breakdown.plan.name}
             </span>
             <span className="block text-xs text-muted-foreground">
-              {breakdown.plan.speed} · {formatUsd(breakdown.planPriceStandard)}{" "}
-              /mo
+              {formatSpeed(breakdown.plan.speedValue, breakdown.plan.speedUnit)}{" "}
+              · {formatUsd(breakdown.planPriceStandard)} /mo
             </span>
           </>
         }

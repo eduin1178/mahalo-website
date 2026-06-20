@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 /**
  * MobileStickySearch
  *
- * Sticky bottom ZIP/address search bar visible on mobile only.
+ * Sticky bottom ZIP-code search bar visible on mobile only.
  * Appears once the visitor scrolls past #hero-end-sentinel.
  * Hides when #final-cta enters the viewport to avoid duplication.
  * Uses two IntersectionObservers — no scroll-event listener.
@@ -64,28 +64,19 @@ export function MobileStickySearch() {
     const trimmed = value.trim();
 
     if (!trimmed) {
-      setError("Enter a ZIP code or address to continue.");
+      setError("Enter a 5-digit ZIP code to continue.");
       return;
     }
-
-    const isNumeric = /^\d+$/.test(trimmed);
-    if (isNumeric && trimmed.length !== 5) {
-      setError("ZIP code must be exactly 5 digits.");
-      return;
-    }
-    if (!isNumeric && trimmed.length < 4) {
-      setError("Enter a 5-digit ZIP code or a full address.");
+    // ZIP-only: keep this in sync with the hero search (no address branch).
+    if (!/^\d{5}$/u.test(trimmed)) {
+      setError("Enter a 5-digit ZIP code.");
       return;
     }
 
     setError(null);
     setSubmitting(true);
     const params = new URLSearchParams();
-    if (isNumeric) {
-      params.set("zip", trimmed);
-    } else {
-      params.set("address", trimmed);
-    }
+    params.set("zip", trimmed);
     router.push(`/checkout?${params.toString()}`);
   };
 
@@ -125,9 +116,10 @@ export function MobileStickySearch() {
           />
           <Input
             type="text"
-            inputMode="text"
+            inputMode="numeric"
             autoComplete="postal-code"
-            placeholder="ZIP code or address"
+            maxLength={5}
+            placeholder="ZIP code"
             value={value}
             onChange={(e) => {
               setValue(e.target.value);

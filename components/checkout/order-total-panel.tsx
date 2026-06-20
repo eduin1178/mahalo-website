@@ -11,6 +11,7 @@ import {
   formatUsd,
   type TotalBreakdown,
 } from "@/lib/orders/totals";
+import { formatSpeed } from "@/lib/plans/speed";
 import { cn } from "@/lib/utils";
 
 export async function OrderTotalPanel() {
@@ -64,7 +65,7 @@ function renderBody(breakdown: TotalBreakdown, provider: Provider | null) {
           {breakdown.plan.name}
         </span>
         <span className="text-xs text-muted-foreground">
-          {breakdown.plan.speed}
+          {formatSpeed(breakdown.plan.speedValue, breakdown.plan.speedUnit)}
         </span>
       </div>
 

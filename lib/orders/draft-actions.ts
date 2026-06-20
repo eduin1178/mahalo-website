@@ -30,14 +30,12 @@ import {
 } from "./draft";
 import { getCurrentDraft } from "./draft";
 
-const inputSchema = z
-  .object({
-    zip: z.string().trim().optional(),
-    address: z.string().trim().optional(),
-  })
-  .refine((v) => Boolean(v.zip) || Boolean(v.address), {
-    message: "Provide a ZIP or address",
-  });
+// Search is ZIP-only by design (see hero-search.tsx): no street address is
+// collected at search time. The installation address is captured later, in the
+// Details step.
+const inputSchema = z.object({
+  zip: z.string().trim().regex(/^\d{5}$/u, "Enter a 5-digit ZIP code."),
+});
 
 export type CreateDraftResult =
   | { ok: true; orderId: string; zip: string }
@@ -45,15 +43,13 @@ export type CreateDraftResult =
 
 export async function createDraftOrder(input: {
   zip?: string;
-  address?: string;
 }): Promise<CreateDraftResult> {
   const parsed = inputSchema.safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: "Provide a ZIP or address." };
+    return { ok: false, error: "Enter a 5-digit ZIP code." };
   }
 
-  const lookupInput = parsed.data.zip ?? parsed.data.address!;
-  const validation = await validateAddress(lookupInput);
+  const validation = await validateAddress(parsed.data.zip);
   if (!validation.ok) {
     return { ok: false, error: validation.error.message };
   }

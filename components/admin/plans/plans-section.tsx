@@ -31,7 +31,8 @@ import {
   togglePlanActive,
   updatePlan,
 } from "@/lib/plans/actions";
-import type { Plan } from "@/lib/db/schema";
+import { planSpeedUnitValues, type Plan } from "@/lib/db/schema";
+import { formatSpeed } from "@/lib/plans/speed";
 
 type Props = {
   providerId: string;
@@ -110,7 +111,7 @@ function PlanRow({ plan }: { plan: Plan }) {
       <TableCell className="font-medium text-mahalo-navy-900">
         {plan.name}
       </TableCell>
-      <TableCell>{plan.speed}</TableCell>
+      <TableCell>{formatSpeed(plan.speedValue, plan.speedUnit)}</TableCell>
       <TableCell>${Number(plan.priceStandard).toFixed(2)}</TableCell>
       <TableCell>${Number(plan.priceAutopay).toFixed(2)}</TableCell>
       <TableCell>
@@ -262,17 +263,38 @@ function PlanFormFields({
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="grid gap-2">
-          <Label htmlFor="plan-speed">Speed</Label>
-          <Input
-            id="plan-speed"
-            name="speed"
-            defaultValue={initial?.speed ?? ""}
-            placeholder="500 Mbps"
-            required
-            maxLength={64}
-          />
-          {errors?.speed?.[0] ? (
-            <p className="text-xs text-destructive">{errors.speed[0]}</p>
+          <Label htmlFor="plan-speed-value">Speed</Label>
+          <div className="flex gap-2">
+            <Input
+              id="plan-speed-value"
+              name="speedValue"
+              type="number"
+              min={0}
+              step="any"
+              inputMode="decimal"
+              defaultValue={initial?.speedValue ?? ""}
+              placeholder="500"
+              required
+              className="flex-1"
+            />
+            <select
+              id="plan-speed-unit"
+              name="speedUnit"
+              defaultValue={initial?.speedUnit ?? "Mbps"}
+              className="h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            >
+              {planSpeedUnitValues.map((u) => (
+                <option key={u} value={u}>
+                  {u}
+                </option>
+              ))}
+            </select>
+          </div>
+          {errors?.speedValue?.[0] ? (
+            <p className="text-xs text-destructive">{errors.speedValue[0]}</p>
+          ) : null}
+          {errors?.speedUnit?.[0] ? (
+            <p className="text-xs text-destructive">{errors.speedUnit[0]}</p>
           ) : null}
         </div>
         <div className="grid gap-2">

@@ -5,7 +5,6 @@ import { getCurrentDraft } from "@/lib/orders/draft";
 
 type SearchParams = Promise<{
   zip?: string | string[];
-  address?: string | string[];
 }>;
 
 function pickFirst(value: string | string[] | undefined): string | null {
@@ -20,9 +19,8 @@ export default async function CheckoutEntryPage({
 }) {
   const sp = await searchParams;
   const zip = pickFirst(sp.zip);
-  const address = pickFirst(sp.address);
 
-  if (!zip && !address) {
+  if (!zip) {
     const existing = await getCurrentDraft();
     if (existing) redirect("/checkout/plan");
     redirect("/");
@@ -36,7 +34,7 @@ export default async function CheckoutEntryPage({
       <p className="text-sm text-muted-foreground">
         We’re looking for providers in your area.
       </p>
-      <DraftBootstrap zip={zip} address={address} />
+      <DraftBootstrap zip={zip} />
     </div>
   );
 }

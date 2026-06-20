@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { ChevronDown } from "lucide-react";
 
 import { ProviderLogoImage } from "@/components/providers/provider-logo-image";
 import { finalizePlan } from "@/lib/orders/draft-actions";
 import type { Plan, Provider } from "@/lib/db/schema";
+import { fastestPlan, formatSpeed } from "@/lib/plans/speed";
 import { cn } from "@/lib/utils";
 
 export type Phase1ProviderEntry = {
@@ -17,10 +19,40 @@ type Props = {
   initialPlanId: string | null;
 };
 
+type ChooseProps = {
+  initialPlanId: string | null;
+  pendingPlanId: string | null;
+  disabled: boolean;
+  onChoose: (planId: string) => void;
+};
+
 export function Phase1Form({ entries, initialPlanId }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  // In multi-provider mode, start collapsed — but pre-open the provider that
+  // owns the already-chosen plan so the user sees their current selection.
+  const initialOpen = useMemo(() => {
+    const open = new Set<string>();
+    if (initialPlanId) {
+      const owner = entries.find((e) =>
+        e.plans.some((p) => p.id === initialPlanId),
+      );
+      if (owner) open.add(owner.provider.id);
+    }
+    return open;
+  }, [entries, initialPlanId]);
+  const [openIds, setOpenIds] = useState<Set<string>>(initialOpen);
+
+  function toggle(providerId: string) {
+    setOpenIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(providerId)) next.delete(providerId);
+      else next.add(providerId);
+      return next;
+    });
+  }
 
   function onChoose(planId: string) {
     setError(null);
@@ -36,48 +68,152 @@ export function Phase1Form({ entries, initialPlanId }: Props) {
     });
   }
 
+  const chooseProps: ChooseProps = {
+    initialPlanId,
+    pendingPlanId,
+    disabled: pending,
+    onChoose,
+  };
+
+  // Single provider → show its plans directly, no collapsed card. The plan
+  // cards already carry the provider identity (logo / colored name).
+  const singleProvider = entries.length === 1;
+
   return (
-    <div className="flex flex-col gap-10">
-      {entries.map(({ provider, plans }) => (
-        <section
-          key={provider.id}
-          aria-labelledby={`provider-${provider.id}`}
-          className="flex flex-col gap-4"
-        >
-          <div className="flex items-center gap-3">
-            <span
-              aria-hidden
-              className="inline-block size-3 rounded-full"
-              style={{ backgroundColor: provider.primaryColor }}
-            />
-            <h2
-              id={`provider-${provider.id}`}
-              className="text-base font-semibold text-mahalo-navy-900"
-            >
-              {provider.name}
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {plans.map((plan) => (
-              <PlanOption
-                key={plan.id}
-                provider={provider}
-                plan={plan}
-                current={plan.id === initialPlanId}
-                pending={pendingPlanId === plan.id}
-                disabled={pending}
-                onChoose={() => onChoose(plan.id)}
-              />
-            ))}
-          </div>
-        </section>
-      ))}
+    <div className="flex flex-col gap-4">
+      {singleProvider ? (
+        <PlanGrid entry={entries[0]} {...chooseProps} />
+      ) : (
+        entries.map((entry) => (
+          <ProviderAccordionCard
+            key={entry.provider.id}
+            entry={entry}
+            open={openIds.has(entry.provider.id)}
+            onToggle={() => toggle(entry.provider.id)}
+            {...chooseProps}
+          />
+        ))
+      )}
 
       {error ? (
         <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       ) : null}
+    </div>
+  );
+}
+
+function formatPrice(n: number): string {
+  return Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`;
+}
+
+function ProviderIdentity({ provider }: { provider: Provider }) {
+  if (provider.logoUrl) {
+    return (
+      <ProviderLogoImage
+        src={provider.logoUrl}
+        alt={provider.name}
+        className="max-h-9 w-auto object-contain"
+      />
+    );
+  }
+  return (
+    <span
+      className="rounded-md px-3 py-1.5 text-lg font-bold leading-tight"
+      style={{
+        color: provider.primaryColor,
+        backgroundColor: `color-mix(in srgb, ${provider.primaryColor} 10%, transparent)`,
+      }}
+    >
+      {provider.name}
+    </span>
+  );
+}
+
+function ProviderAccordionCard({
+  entry,
+  open,
+  onToggle,
+  ...chooseProps
+}: {
+  entry: Phase1ProviderEntry;
+  open: boolean;
+  onToggle: () => void;
+} & ChooseProps) {
+  const { provider, plans } = entry;
+  const panelId = `provider-panel-${provider.id}`;
+
+  // Teaser: cheapest autopay price + fastest plan's speed — no plan named.
+  const cheapestAutopay = Math.min(...plans.map((p) => Number(p.priceAutopay)));
+  const fastest = fastestPlan(plans);
+
+  return (
+    <div className="overflow-hidden rounded-3xl premium-light-card">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        aria-controls={panelId}
+        className="flex w-full items-center gap-4 p-5 text-left transition-colors hover:bg-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mahalo-cyan-500 focus-visible:ring-inset md:p-6"
+      >
+        <span className="flex min-h-9 shrink-0 items-center">
+          <ProviderIdentity provider={provider} />
+        </span>
+
+        <span className="ml-auto flex flex-col items-end text-right">
+          <span className="text-sm font-semibold text-mahalo-navy-900 sm:text-base">
+            From {formatPrice(cheapestAutopay)}/mo
+          </span>
+          {fastest ? (
+            <span className="text-xs font-medium text-muted-foreground sm:text-sm">
+              up to {formatSpeed(fastest.speedValue, fastest.speedUnit)}
+            </span>
+          ) : null}
+        </span>
+
+        <ChevronDown
+          aria-hidden
+          className={cn(
+            "size-5 shrink-0 text-mahalo-navy-900/60 transition-transform duration-300 motion-reduce:transition-none",
+            open && "rotate-180",
+          )}
+        />
+      </button>
+
+      {open ? (
+        <div
+          id={panelId}
+          className="border-t border-mahalo-navy-900/10 bg-white/30 p-5 md:p-6"
+        >
+          <PlanGrid entry={entry} {...chooseProps} />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function PlanGrid({
+  entry,
+  initialPlanId,
+  pendingPlanId,
+  disabled,
+  onChoose,
+}: { entry: Phase1ProviderEntry } & ChooseProps) {
+  const { provider, plans } = entry;
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {plans.map((plan) => (
+        <PlanOption
+          key={plan.id}
+          provider={provider}
+          plan={plan}
+          current={plan.id === initialPlanId}
+          pending={pendingPlanId === plan.id}
+          disabled={disabled}
+          onChoose={() => onChoose(plan.id)}
+        />
+      ))}
     </div>
   );
 }
@@ -143,7 +279,7 @@ function PlanOption({
             {plan.name}
           </h3>
           <p className="mt-1 text-sm font-medium text-muted-foreground">
-            {plan.speed}
+            {formatSpeed(plan.speedValue, plan.speedUnit)}
           </p>
         </div>
 

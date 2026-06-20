@@ -5,8 +5,9 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { getDb } from "@/lib/db/client";
-import { plans } from "@/lib/db/schema";
+import { planSpeedUnitValues, plans } from "@/lib/db/schema";
 import { requireRole } from "@/lib/clerk/require-role";
+import { speedToMbps } from "@/lib/plans/speed";
 
 export type ActionResult<T = void> =
   | { ok: true; data: T }
@@ -28,10 +29,19 @@ const featuresSchema = z
       .filter((line) => line.length > 0),
   );
 
+const speedValueSchema = z.coerce
+  .number({ message: "Enter a speed" })
+  .positive("Speed must be greater than 0")
+  .max(100000, "Speed is too large");
+const speedUnitSchema = z.enum(planSpeedUnitValues, {
+  message: "Choose a unit",
+});
+
 const planCreateSchema = z.object({
   providerId: z.string().uuid(),
   name: z.string().trim().min(1, "Name is required").max(160),
-  speed: z.string().trim().min(1, "Speed is required").max(64),
+  speedValue: speedValueSchema,
+  speedUnit: speedUnitSchema,
   priceStandard: priceSchema,
   priceAutopay: priceSchema,
   features: featuresSchema,
@@ -42,7 +52,8 @@ const planCreateSchema = z.object({
 const planUpdateSchema = z.object({
   id: z.string().uuid(),
   name: z.string().trim().min(1).max(160),
-  speed: z.string().trim().min(1).max(64),
+  speedValue: speedValueSchema,
+  speedUnit: speedUnitSchema,
   priceStandard: priceSchema,
   priceAutopay: priceSchema,
   features: featuresSchema,
@@ -63,7 +74,8 @@ export async function createPlan(
   const parsed = planCreateSchema.safeParse({
     providerId: formData.get("providerId"),
     name: formData.get("name"),
-    speed: formData.get("speed"),
+    speedValue: formData.get("speedValue"),
+    speedUnit: formData.get("speedUnit"),
     priceStandard: formData.get("priceStandard"),
     priceAutopay: formData.get("priceAutopay"),
     features: formData.get("features") ?? "",
@@ -86,7 +98,9 @@ export async function createPlan(
       .values({
         providerId: parsed.data.providerId,
         name: parsed.data.name,
-        speed: parsed.data.speed,
+        speedValue: String(parsed.data.speedValue),
+        speedUnit: parsed.data.speedUnit,
+        speedMbps: speedToMbps(parsed.data.speedValue, parsed.data.speedUnit),
         priceStandard: parsed.data.priceStandard,
         priceAutopay: parsed.data.priceAutopay,
         features: parsed.data.features,
@@ -111,7 +125,8 @@ export async function updatePlan(
   const parsed = planUpdateSchema.safeParse({
     id: formData.get("id"),
     name: formData.get("name"),
-    speed: formData.get("speed"),
+    speedValue: formData.get("speedValue"),
+    speedUnit: formData.get("speedUnit"),
     priceStandard: formData.get("priceStandard"),
     priceAutopay: formData.get("priceAutopay"),
     features: formData.get("features") ?? "",
@@ -126,13 +141,19 @@ export async function updatePlan(
     };
   }
 
-  const { id, ...patch } = parsed.data;
+  const { id, speedValue, speedUnit, ...patch } = parsed.data;
 
   try {
     const db = getDb();
     const [row] = await db
       .update(plans)
-      .set({ ...patch, updatedAt: new Date() })
+      .set({
+        ...patch,
+        speedValue: String(speedValue),
+        speedUnit,
+        speedMbps: speedToMbps(speedValue, speedUnit),
+        updatedAt: new Date(),
+      })
       .where(eq(plans.id, id))
       .returning({ providerId: plans.providerId });
 

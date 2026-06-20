@@ -9,6 +9,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { requireRole } from "@/lib/clerk/require-role";
 import type { AddressJson } from "@/lib/db/schema";
 import { getOrderById } from "@/lib/orders/queries";
+import { formatSpeed } from "@/lib/plans/speed";
 
 export const dynamic = "force-dynamic";
 
@@ -117,7 +118,12 @@ export default async function OrderDetailPage({
             <dl className="grid gap-2 text-sm md:grid-cols-2">
               <Field label="Provider" value={provider?.name ?? "—"} />
               <Field label="Plan" value={plan?.name ?? "—"} />
-              <Field label="Speed" value={plan?.speed ?? "—"} />
+              <Field
+                label="Speed"
+                value={
+                  plan ? formatSpeed(plan.speedValue, plan.speedUnit) : "—"
+                }
+              />
               <Field
                 label="Plan price"
                 value={`${fmtCurrency(planPrice)} ${

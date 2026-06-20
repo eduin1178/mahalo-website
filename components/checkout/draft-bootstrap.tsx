@@ -6,13 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { createDraftOrder } from "@/lib/orders/draft-actions";
 
-export function DraftBootstrap({
-  zip,
-  address,
-}: {
-  zip: string | null;
-  address: string | null;
-}) {
+export function DraftBootstrap({ zip }: { zip: string | null }) {
   const router = useRouter();
   const ranRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,17 +15,14 @@ export function DraftBootstrap({
     if (ranRef.current) return;
     ranRef.current = true;
     void (async () => {
-      const result = await createDraftOrder({
-        zip: zip ?? undefined,
-        address: address ?? undefined,
-      });
+      const result = await createDraftOrder({ zip: zip ?? undefined });
       if (!result.ok) {
         setError(result.error);
         return;
       }
       router.replace("/checkout/plan");
     })();
-  }, [zip, address, router]);
+  }, [zip, router]);
 
   if (error) {
     return (

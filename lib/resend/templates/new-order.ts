@@ -9,6 +9,7 @@ import type {
   Provider,
 } from "@/lib/db/schema";
 import { formatUsd } from "@/lib/orders/totals";
+import { formatSpeed } from "@/lib/plans/speed";
 
 export type NewOrderEmailData = {
   order: Order;
@@ -88,7 +89,7 @@ export function renderNewOrderEmail(data: NewOrderEmailData): {
 
       <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:.08em;color:#1d4ed8;margin:16px 0 8px">Plan</h2>
       <p style="margin:0 0 8px;line-height:1.5">
-        <strong>${escape(plan.name)}</strong> — ${escape(plan.speed)}<br>
+        <strong>${escape(plan.name)}</strong> — ${escape(formatSpeed(plan.speedValue, plan.speedUnit))}<br>
         ${formatUsd(Number(plan.priceStandard))}/mo standard · ${formatUsd(Number(plan.priceAutopay))}/mo autopay<br>
         Autopay: <strong>${order.autopayEnabled ? "ON" : "OFF"}</strong>
       </p>
@@ -122,7 +123,7 @@ export function renderNewOrderEmail(data: NewOrderEmailData): {
     `Phone: ${customer.phone} (${customer.phoneType})`,
     "",
     `Provider: ${provider.name}`,
-    `Plan: ${plan.name} — ${plan.speed}`,
+    `Plan: ${plan.name} — ${formatSpeed(plan.speedValue, plan.speedUnit)}`,
     `Standard: ${formatUsd(Number(plan.priceStandard))}/mo · Autopay: ${formatUsd(Number(plan.priceAutopay))}/mo`,
     `Autopay enabled: ${order.autopayEnabled ? "yes" : "no"}`,
     "",

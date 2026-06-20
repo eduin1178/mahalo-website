@@ -36,6 +36,20 @@
       "when": 1781904099337,
       "tag": "0004_needy_scarlet_witch",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1781907487903,
+      "tag": "0005_short_firedrake",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1781908404316,
+      "tag": "0006_cynical_matthew_murdock",
+      "breakpoints": true
     }
   ]
 }

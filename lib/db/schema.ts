@@ -5,6 +5,7 @@ import {
   integer,
   jsonb,
   numeric,
+  pgEnum,
   pgTable,
   primaryKey,
   text,
@@ -13,6 +14,12 @@ import {
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
+
+// Plan download-speed unit. `Gig` (legacy free-text) is canonicalized to `Gbps`
+// during the speed-column migration; only these two values are ever stored.
+export const planSpeedUnitValues = ["Mbps", "Gbps"] as const;
+export type PlanSpeedUnit = (typeof planSpeedUnitValues)[number];
+export const planSpeedUnit = pgEnum("plan_speed_unit", planSpeedUnitValues);
 
 export const orderStatusValues = [
   "Draft",
@@ -48,7 +55,11 @@ export const plans = pgTable("plans", {
     .notNull()
     .references(() => providers.id, { onDelete: "cascade" }),
   name: varchar("name", { length: 160 }).notNull(),
-  speed: varchar("speed", { length: 64 }).notNull(),
+  // Structured speed: the displayed number + its unit, plus a normalized
+  // megabit-equivalent used to compare/sort (so 1 Gbps outranks 940 Mbps).
+  speedValue: numeric("speed_value"),
+  speedUnit: planSpeedUnit("speed_unit"),
+  speedMbps: integer("speed_mbps"),
   priceStandard: numeric("price_standard", { precision: 10, scale: 2 }).notNull(),
   priceAutopay: numeric("price_autopay", { precision: 10, scale: 2 }).notNull(),
   features: jsonb("features").$type<string[]>().notNull().default(sql`'[]'::jsonb`),

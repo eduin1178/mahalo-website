@@ -11,30 +11,17 @@ type FieldError = string | null;
 
 export type HeroSearchVariant = "hero" | "final-cta";
 
+// Search is ZIP-only: returning an address-specific price is what triggers the
+// FCC Broadband "nutrition" label obligation, so the search step never collects
+// a street address. The installation address is collected later, in Details.
 function classifyInput(raw: string):
   | { kind: "empty" }
   | { kind: "invalid-zip"; message: string }
-  | { kind: "zip"; zip: string }
-  | { kind: "address"; address: string } {
+  | { kind: "zip"; zip: string } {
   const value = raw.trim();
   if (!value) return { kind: "empty" };
-
-  if (/^\d+$/.test(value)) {
-    if (value.length === 5) return { kind: "zip", zip: value };
-    return {
-      kind: "invalid-zip",
-      message: "ZIP code must be exactly 5 digits.",
-    };
-  }
-
-  if (value.length < 4) {
-    return {
-      kind: "invalid-zip",
-      message: "Enter a 5-digit ZIP code or a full address.",
-    };
-  }
-
-  return { kind: "address", address: value };
+  if (/^\d{5}$/u.test(value)) return { kind: "zip", zip: value };
+  return { kind: "invalid-zip", message: "Enter a 5-digit ZIP code." };
 }
 
 interface HeroSearchProps {
@@ -59,7 +46,7 @@ export function HeroSearch({ variant = "hero", idSuffix = "" }: HeroSearchProps)
     const result = classifyInput(value);
 
     if (result.kind === "empty") {
-      setError("Enter a ZIP code or address to continue.");
+      setError("Enter a 5-digit ZIP code to continue.");
       return;
     }
     if (result.kind === "invalid-zip") {
@@ -70,11 +57,7 @@ export function HeroSearch({ variant = "hero", idSuffix = "" }: HeroSearchProps)
     setError(null);
     setSubmitting(true);
     const params = new URLSearchParams();
-    if (result.kind === "zip") {
-      params.set("zip", result.zip);
-    } else {
-      params.set("address", result.address);
-    }
+    params.set("zip", result.zip);
     router.push(`/checkout?${params.toString()}`);
   };
 
@@ -96,7 +79,7 @@ export function HeroSearch({ variant = "hero", idSuffix = "" }: HeroSearchProps)
     <form
       onSubmit={onSubmit}
       noValidate
-      aria-label="Check internet availability by ZIP code or address"
+      aria-label="Check internet availability by ZIP code"
       className="w-full max-w-xl"
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch sm:gap-3">
@@ -107,9 +90,10 @@ export function HeroSearch({ variant = "hero", idSuffix = "" }: HeroSearchProps)
           />
           <Input
             type="text"
-            inputMode="text"
+            inputMode="numeric"
             autoComplete="postal-code"
-            placeholder="Enter ZIP code or address"
+            maxLength={5}
+            placeholder="Enter ZIP code"
             value={value}
             onChange={(e) => {
               setValue(e.target.value);

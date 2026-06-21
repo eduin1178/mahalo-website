@@ -47,7 +47,7 @@ export function Hero() {
 
         {/* Price anchor — the single cyan accent in the hero */}
         <p className="text-sm font-semibold text-mahalo-cyan-300">
-          Plans starting at $29.99/mo — no surprise fees
+          Plans starting at $25.00/mo — no surprise fees
         </p>
 
         {/* Search — hero variant */}
@@ -70,7 +70,7 @@ export function Hero() {
         {/* Provider wordmark strip */}
         <div className="mt-6 w-full border-t border-white/15 pt-8">
           <p className="mb-5 text-xs font-medium tracking-widest text-white/70 uppercase">
-            Providers we work with
+            Authorized Reseller
           </p>
           <ul className="flex flex-wrap items-center justify-center gap-x-5 gap-y-3 sm:gap-x-8 md:gap-x-12">
             {PROVIDER_WORDMARKS.map((p) => (

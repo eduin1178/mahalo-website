@@ -28,7 +28,7 @@ export async function ProvidersGrid() {
         </h2>
         <p className="mt-3 max-w-2xl text-muted-foreground">
           Coverage varies by ZIP. Run a search above and we&apos;ll show you
-          exactly which of these are available at your address.
+          exactly which of these are available in your area.
         </p>
 
         {active.length === 0 ? (

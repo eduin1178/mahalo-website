@@ -7,7 +7,7 @@ import { useCallback, type CSSProperties } from "react";
 const PLANS = [
   {
     speed: "300 Mbps",
-    price: "$29.99",
+    price: "$25.00",
     period: "/mo",
     provider: "Optimum",
     stripeColor: "#005EB8",
@@ -15,7 +15,7 @@ const PLANS = [
   },
   {
     speed: "1 Gig",
-    price: "$59.99",
+    price: "$49.99",
     period: "/mo",
     provider: "Frontier",
     stripeColor: "#CE2026",

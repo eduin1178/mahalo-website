@@ -7,7 +7,7 @@ const steps = [
     n: 1,
     title: "Tell us where you live",
     description:
-      "Enter your ZIP or full address. We check every provider that covers your home.",
+      "Enter your ZIP. We check every provider that covers your area.",
     emphasized: false,
     image: "/landing/steps/step-1.png",
     imageAlt: "Home address lookup moment for checking internet availability",

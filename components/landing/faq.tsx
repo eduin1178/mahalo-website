@@ -12,7 +12,7 @@ const faqs = [
   },
   {
     q: "Do I pay anything to use Mahalo?",
-    a: "No. Our service is free to you. The provider compensates us when a new account is activated.",
+    a: "No, our service is to help you navigate the diAerent programs that are available for you. Internet fees will be billed directly to you from the provider.",
   },
   {
     q: "What happens after I submit my order?",
@@ -20,11 +20,11 @@ const faqs = [
   },
   {
     q: "When will my internet be installed?",
-    a: "You pick the install window during checkout (Monday–Saturday, 8:00 AM – 5:00 PM). Once the provider confirms, you'll receive a confirmation from them with the technician's arrival window.",
+    a: "You pick the best install time provided during your consultation and ordering process phone call. Once the appointment is confirmed by the provider, you will receive confirmation for the technician’s arrival time. ",
   },
   {
     q: "Can I change my plan later?",
-    a: "Yes. Plan changes, upgrades and cancellations are handled by the provider once your account is active. We're happy to help you switch providers in the future — just run a new search.",
+    a: "Yes. Plan changes, upgrades, and cancellations are typically handled directly by your provider once your account is active. We recommend checking with your provider for specific options and policies regarding your service. If you'd like to compare providers or switch services in the future, we're happy to help—just run a new search."
   },
 ];
 

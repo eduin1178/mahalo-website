@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { ChevronDown } from "lucide-react";
+import { useState, useTransition } from "react";
 
+import { ConsentDisclaimerModal } from "@/components/checkout/consent-disclaimer-modal";
 import { ProviderLogoImage } from "@/components/providers/provider-logo-image";
 import { finalizePlan } from "@/lib/orders/draft-actions";
 import type { Plan, Provider } from "@/lib/db/schema";
-import { fastestPlan, formatSpeed } from "@/lib/plans/speed";
+import { formatSpeed } from "@/lib/plans/speed";
 import { cn } from "@/lib/utils";
 
 export type Phase1ProviderEntry = {
@@ -15,46 +15,22 @@ export type Phase1ProviderEntry = {
 };
 
 type Props = {
-  entries: Phase1ProviderEntry[];
+  entry: Phase1ProviderEntry;
   initialPlanId: string | null;
+  // When the provider has add-ons, the consent disclaimer gates the Customize
+  // step instead, so the plan cards advance directly. Otherwise the disclaimer
+  // modal gates the "Choose plan" action here.
+  providerHasAddOns: boolean;
 };
 
-type ChooseProps = {
-  initialPlanId: string | null;
-  pendingPlanId: string | null;
-  disabled: boolean;
-  onChoose: (planId: string) => void;
-};
-
-export function Phase1Form({ entries, initialPlanId }: Props) {
+export function Phase1Form({ entry, initialPlanId, providerHasAddOns }: Props) {
+  const { provider, plans } = entry;
   const [error, setError] = useState<string | null>(null);
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
+  const [consentPlanId, setConsentPlanId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  // In multi-provider mode, start collapsed — but pre-open the provider that
-  // owns the already-chosen plan so the user sees their current selection.
-  const initialOpen = useMemo(() => {
-    const open = new Set<string>();
-    if (initialPlanId) {
-      const owner = entries.find((e) =>
-        e.plans.some((p) => p.id === initialPlanId),
-      );
-      if (owner) open.add(owner.provider.id);
-    }
-    return open;
-  }, [entries, initialPlanId]);
-  const [openIds, setOpenIds] = useState<Set<string>>(initialOpen);
-
-  function toggle(providerId: string) {
-    setOpenIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(providerId)) next.delete(providerId);
-      else next.add(providerId);
-      return next;
-    });
-  }
-
-  function onChoose(planId: string) {
+  function choose(planId: string) {
     setError(null);
     setPendingPlanId(planId);
     startTransition(async () => {
@@ -64,156 +40,55 @@ export function Phase1Form({ entries, initialPlanId }: Props) {
       if (result && !result.ok) {
         setError(result.error);
         setPendingPlanId(null);
+        setConsentPlanId(null);
       }
     });
   }
 
-  const chooseProps: ChooseProps = {
-    initialPlanId,
-    pendingPlanId,
-    disabled: pending,
-    onChoose,
-  };
-
-  // Single provider → show its plans directly, no collapsed card. The plan
-  // cards already carry the provider identity (logo / colored name).
-  const singleProvider = entries.length === 1;
+  function onChoose(planId: string) {
+    if (providerHasAddOns) {
+      // Disclaimer lives on the Customize step; advance directly.
+      choose(planId);
+    } else {
+      // Gate the advance behind the mandatory consent modal.
+      setConsentPlanId(planId);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-4">
-      {singleProvider ? (
-        <PlanGrid entry={entries[0]} {...chooseProps} />
-      ) : (
-        entries.map((entry) => (
-          <ProviderAccordionCard
-            key={entry.provider.id}
-            entry={entry}
-            open={openIds.has(entry.provider.id)}
-            onToggle={() => toggle(entry.provider.id)}
-            {...chooseProps}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {plans.map((plan) => (
+          <PlanOption
+            key={plan.id}
+            provider={provider}
+            plan={plan}
+            current={plan.id === initialPlanId}
+            pending={pendingPlanId === plan.id}
+            disabled={pending}
+            gated={!providerHasAddOns}
+            onChoose={() => onChoose(plan.id)}
           />
-        ))
-      )}
+        ))}
+      </div>
 
       {error ? (
         <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       ) : null}
-    </div>
-  );
-}
 
-function formatPrice(n: number): string {
-  return Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`;
-}
-
-function ProviderIdentity({ provider }: { provider: Provider }) {
-  if (provider.logoUrl) {
-    return (
-      <ProviderLogoImage
-        src={provider.logoUrl}
-        alt={provider.name}
-        className="max-h-9 w-auto object-contain"
+      <ConsentDisclaimerModal
+        open={consentPlanId !== null}
+        onOpenChange={(open) => {
+          if (!open && !pending) setConsentPlanId(null);
+        }}
+        providerName={provider.name}
+        pending={pending}
+        onContinue={() => {
+          if (consentPlanId) choose(consentPlanId);
+        }}
       />
-    );
-  }
-  return (
-    <span
-      className="rounded-md px-3 py-1.5 text-lg font-bold leading-tight"
-      style={{
-        color: provider.primaryColor,
-        backgroundColor: `color-mix(in srgb, ${provider.primaryColor} 10%, transparent)`,
-      }}
-    >
-      {provider.name}
-    </span>
-  );
-}
-
-function ProviderAccordionCard({
-  entry,
-  open,
-  onToggle,
-  ...chooseProps
-}: {
-  entry: Phase1ProviderEntry;
-  open: boolean;
-  onToggle: () => void;
-} & ChooseProps) {
-  const { provider, plans } = entry;
-  const panelId = `provider-panel-${provider.id}`;
-
-  // Teaser: cheapest autopay price + fastest plan's speed — no plan named.
-  const cheapestAutopay = Math.min(...plans.map((p) => Number(p.priceAutopay)));
-  const fastest = fastestPlan(plans);
-
-  return (
-    <div className="overflow-hidden rounded-3xl premium-light-card">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={open}
-        aria-controls={panelId}
-        className="flex w-full items-center gap-4 p-5 text-left transition-colors hover:bg-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mahalo-cyan-500 focus-visible:ring-inset md:p-6"
-      >
-        <span className="flex min-h-9 shrink-0 items-center">
-          <ProviderIdentity provider={provider} />
-        </span>
-
-        <span className="ml-auto flex flex-col items-end text-right">
-          <span className="text-sm font-semibold text-mahalo-navy-900 sm:text-base">
-            From {formatPrice(cheapestAutopay)}/mo
-          </span>
-          {fastest ? (
-            <span className="text-xs font-medium text-muted-foreground sm:text-sm">
-              up to {formatSpeed(fastest.speedValue, fastest.speedUnit)}
-            </span>
-          ) : null}
-        </span>
-
-        <ChevronDown
-          aria-hidden
-          className={cn(
-            "size-5 shrink-0 text-mahalo-navy-900/60 transition-transform duration-300 motion-reduce:transition-none",
-            open && "rotate-180",
-          )}
-        />
-      </button>
-
-      {open ? (
-        <div
-          id={panelId}
-          className="border-t border-mahalo-navy-900/10 bg-white/30 p-5 md:p-6"
-        >
-          <PlanGrid entry={entry} {...chooseProps} />
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function PlanGrid({
-  entry,
-  initialPlanId,
-  pendingPlanId,
-  disabled,
-  onChoose,
-}: { entry: Phase1ProviderEntry } & ChooseProps) {
-  const { provider, plans } = entry;
-  return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {plans.map((plan) => (
-        <PlanOption
-          key={plan.id}
-          provider={provider}
-          plan={plan}
-          current={plan.id === initialPlanId}
-          pending={pendingPlanId === plan.id}
-          disabled={disabled}
-          onChoose={() => onChoose(plan.id)}
-        />
-      ))}
     </div>
   );
 }
@@ -224,6 +99,7 @@ function PlanOption({
   current,
   pending,
   disabled,
+  gated,
   onChoose,
 }: {
   provider: Provider;
@@ -231,6 +107,7 @@ function PlanOption({
   current: boolean;
   pending: boolean;
   disabled: boolean;
+  gated: boolean;
   onChoose: () => void;
 }) {
   const standard = Number(plan.priceStandard).toFixed(2);
@@ -316,6 +193,7 @@ function PlanOption({
           type="button"
           onClick={onChoose}
           disabled={disabled}
+          title={gated ? "Click for details" : undefined}
           className={cn(
             "mt-auto w-full rounded-xl border-2 border-mahalo-navy-900 bg-mahalo-navy-900 px-4 py-3 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:border-mahalo-cyan-500 hover:bg-mahalo-navy-700 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mahalo-cyan-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none",
           )}

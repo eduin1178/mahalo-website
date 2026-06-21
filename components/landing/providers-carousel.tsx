@@ -7,7 +7,7 @@ import { ProviderLogoImage } from "@/components/providers/provider-logo-image";
 type ProviderItem = {
   id: string;
   name: string;
-  landingImageUrl: string | null;
+  logoUrl: string | null;
   primaryColor: string | null;
 };
 
@@ -34,34 +34,27 @@ export function ProvidersCarousel({ providers }: ProvidersCarouselProps) {
             <li
               key={`${p.id}-${i}`}
               style={style}
-              className="provider-card group relative flex aspect-3/4 w-[calc(100cqw-2rem)] shrink-0 flex-col overflow-hidden rounded-3xl border border-white/80 bg-white/85 shadow-[0_24px_62px_rgba(11,31,77,0.1)] ring-1 ring-mahalo-navy-900/5 backdrop-blur transition-shadow duration-300 hover:shadow-[0_30px_80px_rgba(11,31,77,0.18)] sm:w-[calc((100cqw-1.25rem)/2)] lg:w-[calc((100cqw-2.5rem)/3)]"
+              className="provider-card group relative flex aspect-3/2 w-[calc(100cqw-2rem)] shrink-0 items-center justify-center overflow-hidden rounded-3xl border border-white/80 bg-white p-8 shadow-[0_24px_62px_rgba(11,31,77,0.1)] ring-1 ring-mahalo-navy-900/5 backdrop-blur transition-shadow duration-300 hover:shadow-[0_30px_80px_rgba(11,31,77,0.18)] sm:w-[calc((100cqw-1.25rem)/2)] lg:w-[calc((100cqw-2.5rem)/3)]"
             >
-              {p.landingImageUrl ? (
+              <div
+                className="pointer-events-none absolute inset-x-0 top-0 h-1"
+                style={{ backgroundColor: color }}
+                aria-hidden="true"
+              />
+              {p.logoUrl ? (
                 <ProviderLogoImage
-                  src={p.landingImageUrl}
+                  src={p.logoUrl}
                   alt={p.name}
-                  className="absolute inset-0 object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:transition-none"
+                  className="max-h-20 w-auto max-w-[70%] object-contain transition-transform duration-300 group-hover:scale-105 motion-reduce:transition-none"
                 />
               ) : (
-                <div
-                  className="absolute inset-0 flex items-center justify-center"
-                  style={{ backgroundColor: color }}
-                  aria-hidden="true"
+                <span
+                  className="text-2xl font-bold tracking-tight"
+                  style={{ color }}
                 >
-                  <span className="text-3xl font-bold text-white">{p.name}</span>
-                </div>
-              )}
-
-              <div className="absolute inset-x-0 bottom-0 z-10 bg-linear-to-t from-black/80 via-black/45 to-transparent px-5 pb-5 pt-12">
-                <div
-                  className="mb-2 h-px w-10"
-                  style={{ backgroundColor: color }}
-                  aria-hidden="true"
-                />
-                <p className="truncate text-base font-semibold tracking-tight text-white drop-shadow-sm">
                   {p.name}
-                </p>
-              </div>
+                </span>
+              )}
             </li>
           );
         })}

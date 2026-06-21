@@ -1,15 +1,17 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { Phase1Form } from "@/components/checkout/phase1-form";
+import {
+  ProviderSelectForm,
+  type ProviderSelectEntry,
+} from "@/components/checkout/provider-select-form";
 import { Button } from "@/components/ui/button";
 import { getAvailableProviders } from "@/lib/coverage/availability";
-import { providerHasActiveAddOns } from "@/lib/add-ons/queries";
 import { getCurrentDraft } from "@/lib/orders/draft";
 
 export const dynamic = "force-dynamic";
 
-export default async function CheckoutPlanPage() {
+export default async function CheckoutProviderPage() {
   const draft = await getCurrentDraft();
   if (!draft) redirect("/");
   if (!draft.zipCode) redirect("/");
@@ -37,29 +39,21 @@ export default async function CheckoutPlanPage() {
     );
   }
 
-  // Resolve the single provider whose plans this step renders. Multi-provider
-  // ZIPs require an explicit provider choice first (the provider pre-screen).
-  const entry =
-    result.providers.length === 1
-      ? result.providers[0]
-      : result.providers.find((e) => e.provider.id === draft.providerId);
-
-  if (!entry) {
-    redirect("/checkout/provider");
+  // Single provider: there is nothing to choose — go straight to plans.
+  if (result.providers.length === 1) {
+    redirect("/checkout/plan");
   }
 
-  // Decide where the consent disclaimer lives: if this provider has add-ons the
-  // disclaimer gates the Customize step instead, so the plan cards advance
-  // directly. Otherwise the disclaimer gates the "Choose plan" action here.
-  const providerHasAddOns = await providerHasActiveAddOns(entry.provider.id);
+  const entries: ProviderSelectEntry[] = result.providers.map(
+    ({ provider, plans }) => ({ provider, plans }),
+  );
 
   return (
     <div className="flex flex-col gap-6">
       <Header zip={result.zip} />
-      <Phase1Form
-        entry={entry}
-        initialPlanId={draft.planId ?? null}
-        providerHasAddOns={providerHasAddOns}
+      <ProviderSelectForm
+        entries={entries}
+        initialProviderId={draft.providerId ?? null}
       />
     </div>
   );
@@ -69,13 +63,14 @@ function Header({ zip }: { zip: string | null }) {
   return (
     <header className="flex flex-col gap-2">
       <h1 className="text-2xl font-semibold tracking-tight text-mahalo-navy-900 sm:text-3xl">
-        Choose your plan
+        Choose your provider
       </h1>
       <p className="text-sm text-muted-foreground">
         {zip ? (
           <>
-            Plans available for ZIP{" "}
-            <span className="font-mono text-mahalo-navy-900">{zip}</span>.
+            Providers available for ZIP{" "}
+            <span className="font-mono text-mahalo-navy-900">{zip}</span>. Pick
+            one to see its plans.
           </>
         ) : (
           <>We couldn’t verify your address. Start over.</>

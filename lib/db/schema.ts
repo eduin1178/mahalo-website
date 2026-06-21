@@ -126,7 +126,6 @@ export const orders = pgTable("orders", {
   status: varchar("status", { length: 24 }).notNull().default("Draft").$type<OrderStatus>(),
   autopayEnabled: boolean("autopay_enabled").notNull().default(false),
   installationAddress: jsonb("installation_address").$type<AddressJson | null>(),
-  billingAddress: jsonb("billing_address").$type<AddressJson | null>(),
   zipCode: varchar("zip_code", { length: 5 }),
   scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
   // Proof-of-consent captured when the customer submits the order: acceptance of

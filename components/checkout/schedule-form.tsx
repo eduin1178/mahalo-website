@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useTransition, type ReactNode } from "react";
+import { useMemo, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -27,7 +27,6 @@ export type ScheduleFormProps = {
   initialMonth?: number;
   initialDay?: number;
   initialHour?: number;
-  reviewSlot?: ReactNode;
 };
 
 export function ScheduleForm({
@@ -35,7 +34,6 @@ export function ScheduleForm({
   initialMonth,
   initialDay,
   initialHour,
-  reviewSlot,
 }: ScheduleFormProps) {
   const initialDate = useMemo(() => {
     if (
@@ -179,8 +177,6 @@ export function ScheduleForm({
           </p>
         ) : null}
       </SectionCard>
-
-      {reviewSlot}
 
       <SectionCard>
         <label className="flex cursor-pointer items-start gap-3 text-sm text-mahalo-navy-900">

@@ -161,14 +161,6 @@ export default async function OrderDetailPage({
                 label="Installation"
                 value={fmtAddress(order.installationAddress)}
               />
-              <Field
-                label="Billing"
-                value={
-                  order.billingAddress
-                    ? fmtAddress(order.billingAddress)
-                    : "Same as installation"
-                }
-              />
               <Field label="ZIP" value={order.zipCode ?? "—"} />
             </dl>
           </Section>

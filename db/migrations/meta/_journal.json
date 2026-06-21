@@ -50,6 +50,13 @@
       "when": 1781908404316,
       "tag": "0006_cynical_matthew_murdock",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1782056614747,
+      "tag": "0007_cheerful_fantastic_four",
+      "breakpoints": true
     }
   ]
 }

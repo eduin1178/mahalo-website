@@ -27,5 +27,5 @@ This consent is not required to make a purchase. Clicking the button below const
 6. En la sección donde se capturan los datos, ahora ya no será necesario capturar datos de billing, es decir se quita la card: 
 "Use a different billing address" y en consecuencia los datos de la base de datos tambien son innecesarios, se debe aplicar las migraciones aunque sean destructivas. 
 
-7. En el último paso del checkout ahora no debe incluir review order
+7. En el último paso del checkout ahora NO debe incluir el componente review order
 

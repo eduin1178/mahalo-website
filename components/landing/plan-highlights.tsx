@@ -112,6 +112,9 @@ function PlanCard({
         </div>
 
         <div className="rounded-2xl bg-white/70 p-4 ring-1 ring-mahalo-navy-900/10">
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Starting at
+          </span>
           <div className="flex items-end gap-1">
             <span className="text-4xl font-bold tracking-tight text-mahalo-navy-900">
               {price}

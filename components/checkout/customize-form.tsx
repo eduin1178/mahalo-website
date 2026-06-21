@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 
+import { ConsentDisclaimerModal } from "@/components/checkout/consent-disclaimer-modal";
 import { Button } from "@/components/ui/button";
 import { finalizeAddOns } from "@/lib/orders/draft-actions";
 import type { AddOn, Provider } from "@/lib/db/schema";
@@ -17,6 +18,7 @@ export function CustomizeForm({ provider, addOns, initialAddOnIds }: Props) {
     () => new Set(initialAddOnIds),
   );
   const [error, setError] = useState<string | null>(null);
+  const [consentOpen, setConsentOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function toggleAddOn(id: string) {
@@ -35,6 +37,7 @@ export function CustomizeForm({ provider, addOns, initialAddOnIds }: Props) {
       const result = await finalizeAddOns({ addOnIds: ids });
       if (result && !result.ok) {
         setError(result.error);
+        setConsentOpen(false);
       }
     });
   }
@@ -126,11 +129,22 @@ export function CustomizeForm({ provider, addOns, initialAddOnIds }: Props) {
           size="lg"
           className="h-12 w-full rounded-xl px-10 text-base font-semibold sm:w-auto"
           disabled={pending}
-          onClick={onContinue}
+          title="Click for details"
+          onClick={() => setConsentOpen(true)}
         >
           {pending ? "Saving…" : "Continue"}
         </Button>
       </div>
+
+      <ConsentDisclaimerModal
+        open={consentOpen}
+        onOpenChange={(open) => {
+          if (!pending) setConsentOpen(open);
+        }}
+        providerName={provider.name}
+        pending={pending}
+        onContinue={onContinue}
+      />
     </div>
   );
 }

@@ -31,3 +31,20 @@ export const CONSENT_COPY = {
 
 /** Flat plain-text rendering of the disclaimer, for audit and logging. */
 export const CONSENT_TEXT = `${CONSENT_COPY.before} ${CONSENT_COPY.termsLabel} ${CONSENT_COPY.and} ${CONSENT_COPY.privacyLabel}${CONSENT_COPY.after}`;
+
+/**
+ * Marketing / automated-technology contact disclaimer shown as a MANDATORY modal
+ * gating the plan-or-customize advance action. This is distinct from CONSENT_COPY
+ * above (the transactional consent on the final step). Clicking the modal's
+ * "Continue" button constitutes the user's electronic signature — there is no
+ * separate checkbox. The provider name is interpolated into the modal heading.
+ */
+export const PROVIDER_DISCLAIMER_PARAGRAPHS = [
+  "By clicking the button or entering your information, you consent for Mahalo Enterprise, and any of its affiliate service providers to use automated technology. Including but not limited to: texts, phone calls, prerecorded messages, email or digital technology to contact you at the number and email provided about Mahalo Enterprise offers which may or may not be directly related to this specific marketing campaign using other affiliate companies.",
+  "This consent is not required to make a purchase. Clicking the button below constitutes your electronic signature.",
+] as const;
+
+/** Heading for the disclaimer modal, e.g. "Optimum disclaimer". */
+export function providerDisclaimerHeading(providerName: string): string {
+  return `${providerName} disclaimer`;
+}

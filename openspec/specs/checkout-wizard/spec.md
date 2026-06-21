@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the public checkout wizard experience: a four-phase flow (Plan, Customize, Details, Installation) that lets a prospective customer choose a plan, customize it with add-ons (auto-skipped when none exist), provide contact/address information and an autopay preference (payment instruments are collected by phone, never on the site), and schedule installation, with an order total panel shown on every phase except Plan, guarded navigation, legacy URL redirects, and English (US market) copy.
+Defines the public checkout wizard experience: a four-phase flow (Plan, Customize, Details, Installation), preceded by a dedicated provider-selection screen for multi-provider ZIPs, that lets a prospective customer choose a provider and plan, customize it with add-ons (auto-skipped when none exist), provide contact/address information and an autopay preference (payment instruments are collected by phone, never on the site), and schedule installation. A mandatory consent-disclaimer modal gates the plan/customize advance action, with guarded navigation, legacy URL redirects, and English (US market) copy.
 ## Requirements
 ### Requirement: Checkout wizard SHALL present exactly four user-visible phases
 
@@ -18,7 +18,7 @@ The public checkout flow SHALL display a stepper with exactly four phases, in th
 
 ### Requirement: Plan step SHALL present only plan selection
 
-The Plan step (step 1, `/checkout/plan`) SHALL present plan selection ONLY. It SHALL NOT render the add-ons selector and SHALL NOT render the order-total panel; with the panel absent, the content SHALL span the full content width (the summary column SHALL NOT be reserved). Results SHALL be organized by provider (see "Plan step SHALL group results by provider"). Choosing a plan SHALL immediately persist it to the draft and advance to the next step — there SHALL be no separate confirm/continue button on this step, and revealing a provider's plans SHALL NOT count as a wizard step.
+The Plan step (step 1, `/checkout/plan`) SHALL present plan selection ONLY. It SHALL NOT render the add-ons selector and SHALL NOT render the order-total panel; with the panel absent, the content SHALL span the full content width (the summary column SHALL NOT be reserved). The step SHALL render only the chosen provider's plans (the provider is chosen on the pre-Plan provider screen for multi-provider ZIPs, or is the single serving provider; see "Provider selection SHALL be a dedicated pre-Plan screen for multi-provider ZIPs"). Choosing a plan SHALL immediately persist it to the draft and advance to the next step — there SHALL be no separate confirm/continue button on this step.
 
 #### Scenario: Plan step shows no add-ons and spans full width
 - **WHEN** the Plan step renders
@@ -31,11 +31,11 @@ The Plan step (step 1, `/checkout/plan`) SHALL present plan selection ONLY. It S
 
 ### Requirement: Customize step SHALL host add-ons and auto-skip when none exist
 
-The Customize step (step 2, `/checkout/customize`) SHALL host the add-ons selector for the selected plan's provider and SHALL show the order-total panel. When the selected plan's provider has zero active add-ons, the step SHALL be skipped automatically via a server-side redirect to the Details step, so the user never sees an empty Customize page.
+The Customize step (step 2, `/checkout/customize`) SHALL host the add-ons selector for the selected plan's provider. When the selected plan's provider has zero active add-ons, the step SHALL be skipped automatically via a server-side redirect to the Details step, so the user never sees an empty Customize page.
 
 #### Scenario: Provider with active add-ons
 - **WHEN** the user reaches `/checkout/customize` and the selected plan's provider has at least one active add-on
-- **THEN** the add-ons selector SHALL render with the order-total panel
+- **THEN** the add-ons selector SHALL render
 - **AND** the primary action SHALL persist the selected add-ons to the draft and advance to the Details step.
 
 #### Scenario: Provider without add-ons auto-skips
@@ -48,11 +48,12 @@ The Customize step (step 2, `/checkout/customize`) SHALL host the add-ons select
 
 ### Requirement: Details step SHALL combine customer information and payment preference in a single view
 
-The Details step (step 3, `/checkout/details`) SHALL capture contact information, installation address, billing address, and autopay enrollment (a price preference only) in one page with sectioned layout, and SHALL show the order-total panel. The step SHALL NOT capture a payment method (card or ACH).
+The Details step (step 3, `/checkout/details`) SHALL capture contact information, installation address, and autopay enrollment (a price preference only) in one page with sectioned layout. The step SHALL NOT capture a billing address and SHALL NOT capture a payment method (card or ACH). No order-total panel SHALL be rendered.
 
 #### Scenario: Loading Details with no prior data
 - **WHEN** the user enters the Details step for the first time
-- **THEN** the page SHALL render the contact, installation address, billing address, and payment-preference sections, all editable.
+- **THEN** the page SHALL render the contact, installation address, and payment-preference sections, all editable
+- **AND** no billing-address section and no order-total panel SHALL be present.
 
 #### Scenario: Advancing from Details with valid data
 - **WHEN** the user clicks the primary action and all required fields are valid
@@ -64,20 +65,17 @@ The Details step (step 3, `/checkout/details`) SHALL capture contact information
 
 ### Requirement: Installation step SHALL combine scheduling and final review in a single view
 
-The Installation step (step 4, `/checkout/schedule`) SHALL let the user choose an installation date and time window, SHALL show the order-total panel, SHALL show a consolidated read-only review of the order before submission, and SHALL require explicit consent before the order can be submitted. The date picker and the time-window selector SHALL sit side by side within the same card (date on the left, windows on the right). The read-only review SHALL render after the date/time selection and before the consent control, so the consent control and the primary submit action are the last elements on the page. The primary submit action SHALL be labeled **"Place order"**.
+The Installation step (step 4, `/checkout/schedule`) SHALL let the user choose an installation date and time window, and SHALL require explicit consent before the order can be submitted. The date picker and the time-window selector SHALL sit side by side within the same card (date on the left, windows on the right). The step SHALL NOT render a read-only order review card and SHALL NOT render an order-total panel. The consent control and the primary submit action SHALL be the last elements on the page. The primary submit action SHALL be labeled **"Place order"**.
 
 #### Scenario: Loading the Installation step
 - **WHEN** the user enters the Installation step with a complete draft
-- **THEN** the page SHALL render a single card containing the date picker (left) and the time-window selector (right), followed by the read-only order review, the consent control, and finally the "Place order" submit button
+- **THEN** the page SHALL render a single card containing the date picker (left) and the time-window selector (right), followed by the consent control and finally the "Place order" submit button
+- **AND** no order-review card and no order-total panel SHALL be present
 - **AND** no interactive control SHALL appear after the submit button.
 
 #### Scenario: Submitting the order
 - **WHEN** the user picks a valid time window, accepts the consent disclaimer, and clicks "Place order"
 - **THEN** the system SHALL persist the consent proof and submit the order via the existing server action and navigate to `/checkout/confirmation`.
-
-#### Scenario: Editing data from the Installation step
-- **WHEN** the user clicks an "Edit" affordance next to a review section
-- **THEN** the system SHALL navigate back to the corresponding earlier step with the relevant section visible.
 
 ### Requirement: Installation scheduling SHALL offer exactly three fixed time windows
 
@@ -94,35 +92,15 @@ The Installation step SHALL offer exactly three selectable installation time win
 
 ### Requirement: Installation time SHALL persist the window start hour and render as an interval only in the scheduling step
 
-The order SHALL persist only the **start hour** of the chosen installation window (one of `8`, `10`, `14`). Wherever the installation time is displayed — the confirmation page, the order email, the n8n webhook payload, and admin order views — it SHALL render the **start hour**. The two-hour **interval** form (`start`–`start+2h`, e.g. "8 – 10 AM") SHALL be rendered ONLY inside the Installation step's time-window selector and its read-only review card.
+The order SHALL persist only the **start hour** of the chosen installation window (one of `8`, `10`, `14`). Wherever the installation time is displayed — the confirmation page, the order email, the n8n webhook payload, and admin order views — it SHALL render the **start hour**. The two-hour **interval** form (`start`–`start+2h`, e.g. "8 – 10 AM") SHALL be rendered ONLY inside the Installation step's time-window selector.
 
-#### Scenario: Interval shown in the scheduling step and its review
-- **WHEN** the Installation step renders the time-window selector and the read-only review of the chosen slot
-- **THEN** both SHALL display the two-hour interval (e.g. "8 – 10 AM").
+#### Scenario: Interval shown in the scheduling step
+- **WHEN** the Installation step renders the time-window selector for the chosen slot
+- **THEN** it SHALL display the two-hour interval (e.g. "8 – 10 AM").
 
 #### Scenario: Start hour shown downstream
 - **WHEN** the installation time is rendered on the confirmation page, in the order email, in the webhook payload, or in an admin order view
 - **THEN** it SHALL display the window start hour (e.g. "8:00 AM") and SHALL NOT render the interval.
-
-### Requirement: Order total panel SHALL be visible on every phase except Plan
-
-The system SHALL render the `OrderTotalPanel` on the Customize, Details, and Installation phases, displaying the running cost breakdown computed from the current draft. The panel SHALL NOT be rendered on the Plan phase. The panel SHALL stay consistent with the persisted draft across phase transitions.
-
-#### Scenario: Panel hidden on Plan
-- **WHEN** the Plan phase renders
-- **THEN** the order-total panel SHALL NOT be present, and the plan grid SHALL use the full content width.
-
-#### Scenario: Panel placement on desktop
-- **WHEN** the viewport is `lg` or wider on the Customize, Details, or Installation phase
-- **THEN** the panel SHALL appear as a sidebar adjacent to the main form area.
-
-#### Scenario: Panel placement on mobile
-- **WHEN** the viewport is narrower than `lg` on the Customize, Details, or Installation phase
-- **THEN** the panel SHALL appear as a sticky bottom bar that can be expanded to show the full breakdown.
-
-#### Scenario: Panel reflects selections after advancing a phase
-- **WHEN** the user selects a plan on the Plan phase and the wizard navigates onward
-- **THEN** the panel on the Customize/Details phases SHALL display the chosen plan and its computed total.
 
 ### Requirement: Legacy checkout URLs SHALL redirect to the consolidated routes
 
@@ -278,7 +256,7 @@ Each plan option in Phase 1 SHALL present the provider's identity using a dedica
 
 ### Requirement: Plan cards SHALL lay out at most three per row
 
-The Plan step grid SHALL render at most **three** plan cards per row on large viewports, so the grid uses the width freed by hiding the order-total panel. Narrower viewports MAY collapse to two columns or a single column.
+The Plan step grid SHALL render at most **three** plan cards per row on large viewports, using the full single-column content width. Narrower viewports MAY collapse to two columns or a single column.
 
 #### Scenario: Large viewport
 
@@ -326,7 +304,7 @@ The Plan step plan cards, the Customize step add-ons selector, each Details step
 #### Scenario: Installation surfaces
 
 - **WHEN** the Installation step renders
-- **THEN** the combined date-and-time-window card, the consent control, and the order review SHALL each use the premium card surface and SHALL NOT lift on hover.
+- **THEN** the combined date-and-time-window card and the consent control SHALL each use the premium card surface and SHALL NOT lift on hover.
 
 ### Requirement: The primary advance action SHALL be a prominent button
 
@@ -411,46 +389,65 @@ Order submission SHALL succeed for an autopay-enabled order without any stored p
 - **WHEN** a complete draft with autopay enabled and no stored payment data is submitted
 - **THEN** `submitOrder` SHALL transition the order to "Pending" and SHALL NOT return a "Payment details are missing" error.
 
-### Requirement: Plan step SHALL group results by provider
+### Requirement: Provider selection SHALL be a dedicated pre-Plan screen for multi-provider ZIPs
 
-The Plan step SHALL present coverage results grouped by provider rather than as a flat list of all plans. The presentation SHALL depend on how many providers serve the draft's ZIP code:
+When two or more providers serve the draft's ZIP code, the wizard SHALL present a dedicated provider-selection screen at `/checkout/provider` BEFORE the Plan step. This screen is a pre-step: it SHALL NOT add a numbered phase to the stepper, which SHALL remain exactly four phases (Plan, Customize, Details, Installation). Choosing a provider SHALL persist `providerId` on the draft (clearing any previously selected `planId` and add-ons) and navigate to the Plan step, which SHALL then present only the chosen provider's plans. When exactly one provider serves the ZIP, the provider screen SHALL be skipped and that provider's plans SHALL render directly on the Plan step, unchanged. The plan accordion (collapsed per-provider cards on the Plan step) SHALL no longer be used.
 
-- When **exactly one** provider is available, that provider's plans SHALL render directly (expanded), with no collapsed provider card and no extra interaction required to see them.
-- When **two or more** providers are available, each provider SHALL be presented as a collapsed, full-content-width card; the provider's plans SHALL be revealed only when the user expands that card (accordion), and SHALL be hidden again when the card is collapsed.
+#### Scenario: Multiple providers route through the provider screen
+- **WHEN** the user enters checkout with a ZIP served by two or more providers
+- **THEN** the system SHALL render the `/checkout/provider` screen listing each available provider as a selectable card
+- **AND** the stepper SHALL still show four phases with "Plan" as the first.
 
-The accordion SHALL allow expanding a provider's plans in place without navigating away from the Plan step. When no provider is available for the ZIP, the existing empty/no-coverage state SHALL be shown.
+#### Scenario: Choosing a provider narrows the Plan step
+- **WHEN** the user selects a provider on the provider screen
+- **THEN** the system SHALL persist `providerId`, clear any prior `planId` and add-on selection, and navigate to `/checkout/plan`
+- **AND** the Plan step SHALL render only that provider's plans, with no provider accordion.
 
-#### Scenario: Single provider renders plans directly
-- **WHEN** the Plan step renders and exactly one provider serves the ZIP
-- **THEN** that provider's plans SHALL be visible without any expand interaction
-- **AND** no collapsed provider card SHALL be shown.
+#### Scenario: Single provider skips the provider screen
+- **WHEN** the user enters checkout with a ZIP served by exactly one provider
+- **THEN** the system SHALL NOT render the provider screen and SHALL render that provider's plans directly on the Plan step.
 
-#### Scenario: Multiple providers render as collapsed cards
-- **WHEN** the Plan step renders and two or more providers serve the ZIP
-- **THEN** each provider SHALL render as a collapsed full-width card
-- **AND** the providers' plan grids SHALL NOT be visible until a card is expanded.
+#### Scenario: Direct access to the Plan step without a chosen provider in a multi-provider ZIP
+- **WHEN** a session requests `/checkout/plan` for a multi-provider ZIP and the draft has no `providerId`
+- **THEN** the server SHALL redirect to `/checkout/provider`.
 
-#### Scenario: Expanding a provider card reveals its plans
-- **WHEN** the user activates (clicks or keyboard-activates) a collapsed provider card
-- **THEN** that card SHALL expand to reveal the provider's plans with their "Choose plan" actions
-- **AND** the expansion SHALL occur in place on the Plan step without adding a wizard step or navigating away.
-
-#### Scenario: Provider card is keyboard and screen-reader operable
+#### Scenario: Provider screen is keyboard and screen-reader operable
 - **WHEN** the user navigates the provider cards with the keyboard
-- **THEN** each card's expand/collapse control SHALL be focusable, operable without a pointer, and expose its expanded/collapsed state to assistive technology.
+- **THEN** each provider's selection control SHALL be focusable, operable without a pointer, and expose its name and teaser to assistive technology.
+
+### Requirement: Consent disclaimer SHALL be presented as a mandatory modal on the plan/customize advance action
+
+The wizard SHALL present the contact-consent disclaimer as a mandatory modal gated on the primary advance action of the plan-selection phase. The modal SHALL contain the provider-specific disclaimer copy (with the provider name interpolated where `[Provider]` appears) and a single **"Continue"** button; activating that button SHALL constitute the user's electronic signature and SHALL perform the advance action. There SHALL be no separate consent checkbox on this surface. The trigger button SHALL expose a "Click for details" tooltip. The disclaimer SHALL appear on the Customize step's "Continue" button when the provider has active add-ons, and otherwise on the Plan step's "Choose plan" button — never on both for the same draft. All disclaimer copy SHALL be in English (US market).
+
+#### Scenario: Provider with add-ons shows the disclaimer at Customize
+- **WHEN** the provider has active add-ons and the user clicks the "Continue" button on the Customize step
+- **THEN** the system SHALL open the disclaimer modal with the provider name interpolated and SHALL NOT yet advance
+- **AND** the Plan step's "Choose plan" action for that draft SHALL NOT open the disclaimer modal.
+
+#### Scenario: Provider without add-ons shows the disclaimer at Plan
+- **WHEN** the provider has no active add-ons and the user clicks "Choose plan" on the Plan step
+- **THEN** the system SHALL open the disclaimer modal with the provider name interpolated and SHALL NOT yet advance.
+
+#### Scenario: Continuing from the modal is the electronic signature
+- **WHEN** the disclaimer modal is open and the user clicks its "Continue" button
+- **THEN** the system SHALL perform the gated advance action (persisting the plan or add-on selection) and navigate to the next step.
+
+#### Scenario: Dismissing the modal does not advance
+- **WHEN** the disclaimer modal is open and the user dismisses it without clicking "Continue"
+- **THEN** the system SHALL remain on the current step and SHALL NOT persist an advance.
 
 ### Requirement: Provider cards SHALL show a price-and-speed teaser
 
-Each collapsed provider card SHALL display a teaser summarizing that provider's offering without naming an individual plan: a starting price and a top speed. The starting price SHALL be `From $X/mo`, where X is the **lowest `priceAutopay`** among the provider's active plans. The top speed SHALL be rendered as `up to Y`, where Y is the value and unit of the provider's **fastest** active plan (the plan with the greatest normalized speed). The teaser SHALL also render the provider identity (the provider's card logo when present, otherwise the provider name in its `primaryColor` as a fallback). All teaser copy SHALL be in English (US market).
+Each provider card on the provider-selection screen SHALL display a teaser summarizing that provider's offering without naming an individual plan: a starting price and a top speed. The starting price SHALL be `From $X/mo`, where X is the **lowest `priceAutopay`** among the provider's active plans. The top speed SHALL be rendered as `up to Y`, where Y is the value and unit of the provider's **fastest** active plan (the plan with the greatest normalized speed). The teaser SHALL also render the provider identity (the provider's card logo when present, otherwise the provider name in its `primaryColor` as a fallback). All teaser copy SHALL be in English (US market).
 
 #### Scenario: Teaser shows cheapest autopay price and fastest speed
-- **WHEN** a collapsed provider card renders for a provider with active plans
+- **WHEN** a provider card renders on the provider-selection screen for a provider with active plans
 - **THEN** it SHALL show `From $X/mo` using the lowest autopay price among that provider's plans
 - **AND** it SHALL show `up to Y` using the value and unit of that provider's fastest plan
 - **AND** it SHALL NOT name any specific plan in the teaser.
 
 #### Scenario: Teaser shows provider identity
-- **WHEN** a collapsed provider card renders
+- **WHEN** a provider card renders on the provider-selection screen
 - **THEN** it SHALL show the provider's card logo when `logoUrl` is set
 - **AND** SHALL otherwise show the provider `name` in its `primaryColor` as the identity fallback.
 

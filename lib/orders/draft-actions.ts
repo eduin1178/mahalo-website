@@ -91,6 +91,53 @@ export async function clearDraftCookie(): Promise<void> {
   store.delete(DRAFT_COOKIE_NAME);
 }
 
+const finalizeProviderSchema = z.object({
+  providerId: z.string().uuid(),
+});
+
+export type FinalizeProviderResult = { ok: false; error: string };
+
+/**
+ * Persist the chosen provider (multi-provider ZIPs only). Clears any plan and
+ * add-ons selected for a previously chosen provider, then sends the user to the
+ * Plan step, which renders only this provider's plans.
+ */
+export async function finalizeProvider(input: {
+  providerId: string;
+}): Promise<FinalizeProviderResult> {
+  const parsed = finalizeProviderSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: "Invalid selection." };
+  }
+
+  const draft = await getCurrentDraft();
+  if (!draft) {
+    return { ok: false, error: "Your session expired. Start over." };
+  }
+  if (!draft.zipCode) {
+    return { ok: false, error: "ZIP code is missing. Start over." };
+  }
+
+  const covered = await findProvidersByZip(draft.zipCode);
+  if (!covered.some((p) => p.id === parsed.data.providerId)) {
+    return { ok: false, error: "This provider isn't available for your ZIP." };
+  }
+
+  const db = getDb();
+  await db
+    .update(orders)
+    .set({
+      providerId: parsed.data.providerId,
+      planId: null,
+      addOnIds: [],
+      updatedAt: new Date(),
+    })
+    .where(eq(orders.id, draft.id));
+
+  revalidatePath("/checkout", "layout");
+  redirect("/checkout/plan");
+}
+
 const finalizePlanSchema = z.object({
   planId: z.string().uuid(),
 });
@@ -140,8 +187,8 @@ export async function finalizePlan(input: {
     })
     .where(eq(orders.id, draft.id));
 
-  // Mark the shared checkout layout stale so OrderTotalPanel (rendered in the
-  // layout) re-fetches the updated draft on the redirect navigation.
+  // Mark the shared checkout layout stale so downstream steps re-fetch the
+  // updated draft on the redirect navigation.
   revalidatePath("/checkout", "layout");
 
   // Decide the skip here (not on the Customize page) so a no-add-ons funnel
@@ -201,8 +248,8 @@ export async function finalizeAddOns(input: {
     .set({ addOnIds: validatedAddOnIds, updatedAt: new Date() })
     .where(eq(orders.id, draft.id));
 
-  // Mark the shared checkout layout stale so OrderTotalPanel (rendered in the
-  // layout) re-fetches the updated draft on the redirect navigation.
+  // Mark the shared checkout layout stale so downstream steps re-fetch the
+  // updated draft on the redirect navigation.
   revalidatePath("/checkout", "layout");
   redirect("/checkout/details");
 }
@@ -224,31 +271,19 @@ const addressSchema = z.object({
   zip: z.string().trim().regex(/^\d{5}$/u, "Enter a 5-digit ZIP"),
 });
 
-const customerInfoSchema = z
-  .object({
-    firstName: z.string().trim().min(1, "Required").max(80),
-    lastName: z.string().trim().min(1, "Required").max(80),
-    email: z.string().trim().toLowerCase().email("Invalid email").max(254),
-    phone: z
-      .string()
-      .trim()
-      .min(7, "Invalid phone")
-      .max(32)
-      .regex(/^[\d\s().+-]+$/u, "Invalid phone"),
-    phoneType: z.enum(phoneTypeValues),
-    installationAddress: addressSchema,
-    useDifferentBilling: z.boolean(),
-    billingAddress: addressSchema.optional(),
-  })
-  .superRefine((v, ctx) => {
-    if (v.useDifferentBilling && !v.billingAddress) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["billingAddress"],
-        message: "Billing address is required",
-      });
-    }
-  });
+const customerInfoSchema = z.object({
+  firstName: z.string().trim().min(1, "Required").max(80),
+  lastName: z.string().trim().min(1, "Required").max(80),
+  email: z.string().trim().toLowerCase().email("Invalid email").max(254),
+  phone: z
+    .string()
+    .trim()
+    .min(7, "Invalid phone")
+    .max(32)
+    .regex(/^[\d\s().+-]+$/u, "Invalid phone"),
+  phoneType: z.enum(phoneTypeValues),
+  installationAddress: addressSchema,
+});
 
 // Autopay is a price preference only. Payment instruments are collected over
 // the phone by an agent, never captured or stored by the site.
@@ -291,17 +326,6 @@ export async function finalizePhase2(
     state: c.installationAddress.state,
     zip: c.installationAddress.zip,
   };
-  const billing: AddressJson | null =
-    c.useDifferentBilling && c.billingAddress
-      ? {
-          line1: c.billingAddress.line1,
-          line2: c.billingAddress.line2,
-          city: c.billingAddress.city,
-          state: c.billingAddress.state,
-          zip: c.billingAddress.zip,
-        }
-      : null;
-
   const db = getDb();
 
   const [customer] = await db
@@ -330,15 +354,14 @@ export async function finalizePhase2(
     .set({
       customerId: customer.id,
       installationAddress: installation,
-      billingAddress: billing,
       zipCode: installation.zip,
       autopayEnabled: parsed.data.payment.autopay,
       updatedAt: new Date(),
     })
     .where(eq(orders.id, draft.id));
 
-  // Mark the shared checkout layout stale so OrderTotalPanel (rendered in the
-  // layout) re-fetches the updated draft on the redirect navigation.
+  // Mark the shared checkout layout stale so downstream steps re-fetch the
+  // updated draft on the redirect navigation.
   revalidatePath("/checkout", "layout");
   redirect("/checkout/schedule");
 }

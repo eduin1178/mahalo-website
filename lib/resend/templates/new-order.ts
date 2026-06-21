@@ -103,9 +103,6 @@ export function renderNewOrderEmail(data: NewOrderEmailData): {
       <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:.08em;color:#1d4ed8;margin:16px 0 8px">Installation address</h2>
       <pre style="margin:0 0 16px;font-family:inherit;white-space:pre-wrap;line-height:1.5">${fmtAddress(order.installationAddress)}</pre>
 
-      <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:.08em;color:#1d4ed8;margin:16px 0 8px">Billing address</h2>
-      <pre style="margin:0 0 16px;font-family:inherit;white-space:pre-wrap;line-height:1.5">${fmtAddress(order.billingAddress ?? order.installationAddress)}</pre>
-
       <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:.08em;color:#1d4ed8;margin:16px 0 8px">Scheduled installation</h2>
       <p style="margin:0">${escape(fmtDate(order.scheduledAt))}</p>
     </div>

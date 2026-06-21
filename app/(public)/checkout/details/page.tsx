@@ -21,7 +21,6 @@ export default async function CheckoutDetailsPage() {
   if (!breakdown) redirect("/checkout/plan");
 
   const installation = draft.installationAddress;
-  const billing = draft.billingAddress;
 
   let existing: typeof customers.$inferSelect | null = null;
   if (draft.customerId) {
@@ -46,14 +45,6 @@ export default async function CheckoutDetailsPage() {
       city: installation?.city ?? "",
       state: installation?.state ?? "",
       zip: installation?.zip ?? draft.zipCode ?? "",
-    },
-    useDifferentBilling: Boolean(billing),
-    billingAddress: {
-      line1: billing?.line1 ?? "",
-      line2: billing?.line2 ?? "",
-      city: billing?.city ?? "",
-      state: billing?.state ?? "",
-      zip: billing?.zip ?? "",
     },
     // Promote autopay: default to ON for a fresh draft. A returning user who
     // already completed this step (customerId set) keeps their saved choice.

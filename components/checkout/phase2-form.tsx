@@ -21,44 +21,20 @@ const addressFieldsSchema = z.object({
   zip: z.string().trim().regex(/^\d{5}$/u, "Enter a 5-digit ZIP"),
 });
 
-const billingAddressLooseSchema = z.object({
-  line1: z.string().max(200).optional().or(z.literal("")),
-  line2: z.string().max(200).optional().or(z.literal("")),
-  city: z.string().max(100).optional().or(z.literal("")),
-  state: z.string().max(40).optional().or(z.literal("")),
-  zip: z.string().max(10).optional().or(z.literal("")),
+const formSchema = z.object({
+  firstName: z.string().trim().min(1, "Required").max(80),
+  lastName: z.string().trim().min(1, "Required").max(80),
+  email: z.string().trim().email("Invalid email").max(254),
+  phone: z
+    .string()
+    .trim()
+    .min(7, "Invalid phone")
+    .max(32)
+    .regex(/^[\d\s().+-]+$/u, "Invalid phone"),
+  phoneType: z.enum(phoneTypeValues),
+  installationAddress: addressFieldsSchema,
+  autopay: z.boolean(),
 });
-
-const formSchema = z
-  .object({
-    firstName: z.string().trim().min(1, "Required").max(80),
-    lastName: z.string().trim().min(1, "Required").max(80),
-    email: z.string().trim().email("Invalid email").max(254),
-    phone: z
-      .string()
-      .trim()
-      .min(7, "Invalid phone")
-      .max(32)
-      .regex(/^[\d\s().+-]+$/u, "Invalid phone"),
-    phoneType: z.enum(phoneTypeValues),
-    installationAddress: addressFieldsSchema,
-    useDifferentBilling: z.boolean(),
-    billingAddress: billingAddressLooseSchema,
-    autopay: z.boolean(),
-  })
-  .superRefine((v, ctx) => {
-    if (v.useDifferentBilling) {
-      const result = addressFieldsSchema.safeParse(v.billingAddress);
-      if (!result.success) {
-        for (const issue of result.error.issues) {
-          ctx.addIssue({
-            ...issue,
-            path: ["billingAddress", ...(issue.path as string[])],
-          });
-        }
-      }
-    }
-  });
 
 type FormValues = z.input<typeof formSchema>;
 
@@ -69,14 +45,6 @@ export type Phase2FormInitialValues = {
   phone: string;
   phoneType: PhoneType;
   installationAddress: {
-    line1: string;
-    line2?: string;
-    city: string;
-    state: string;
-    zip: string;
-  };
-  useDifferentBilling: boolean;
-  billingAddress: {
     line1: string;
     line2?: string;
     city: string;
@@ -104,7 +72,6 @@ function formatUsd(value: number): string {
 const SECTION_IDS = {
   contact: "section-contacto",
   installation: "section-installation",
-  billing: "section-billing",
   payment: "section-payment",
 } as const;
 
@@ -121,7 +88,6 @@ function firstInvalidSection(
     return SECTION_IDS.contact;
   }
   if (errors.installationAddress) return SECTION_IDS.installation;
-  if (errors.billingAddress) return SECTION_IDS.billing;
   return null;
 }
 
@@ -139,7 +105,6 @@ export function Phase2Form({
     mode: "onBlur",
   });
 
-  const useDifferentBilling = form.watch("useDifferentBilling");
   const autopay = form.watch("autopay");
 
   const savings = Math.max(0, monthlyStandard - monthlyAutopay);
@@ -164,10 +129,6 @@ export function Phase2Form({
       phone: values.phone,
       phoneType: values.phoneType,
       installationAddress: values.installationAddress,
-      useDifferentBilling: values.useDifferentBilling,
-      billingAddress: values.useDifferentBilling
-        ? (values.billingAddress as Phase2FormInitialValues["billingAddress"])
-        : undefined,
     };
 
     startTransition(async () => {
@@ -288,34 +249,6 @@ export function Phase2Form({
         register={form.register}
         errors={errors.installationAddress as never}
       />
-
-      <SectionCard id={SECTION_IDS.billing}>
-        <label className="flex cursor-pointer items-start gap-3">
-          <input
-            type="checkbox"
-            className="mt-1 size-4 cursor-pointer accent-mahalo-blue-600"
-            {...form.register("useDifferentBilling")}
-          />
-          <span className="flex flex-col gap-0.5">
-            <span className="text-sm font-semibold text-mahalo-navy-900">
-              Use a different billing address
-            </span>
-            <span className="text-xs text-muted-foreground">
-              Turn this on if the bill should go somewhere else.
-            </span>
-          </span>
-        </label>
-
-        {useDifferentBilling ? (
-          <AddressSection
-            title="Billing address"
-            prefix="billingAddress"
-            register={form.register}
-            errors={errors.billingAddress as never}
-            embedded
-          />
-        ) : null}
-      </SectionCard>
 
       <SectionCard id={SECTION_IDS.payment}>
         <div className="flex flex-col gap-1">
@@ -510,7 +443,7 @@ function AddressSection({
 }: {
   id?: string;
   title: string;
-  prefix: "installationAddress" | "billingAddress";
+  prefix: "installationAddress";
   register: ReturnType<typeof useForm<FormValues>>["register"];
   errors?: AddressErrors;
   embedded?: boolean;

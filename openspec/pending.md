@@ -1,3 +1,2 @@
-1. Logos
-2. Cambiar agendar instalación por agendar llamada, mantener datos de instalacion para gestionarlo. 
-3. Analizar como se gestiona el webhook para cuando el cliente no culmina el proceso.
+1. Cambia los nombres de los proveedores que están en el hero section por los logos, manten la fuente del nombre con el mismo estilo cuando no haya imagen, es decir que deben estar proveniendo de la base de datos
+2. Ahora, el ultimo paso del checkout no es agendar la instalación sino seleccionar mejor franja horaria para recibir la llamada del asesor. En el backoffice se debe mantener la funcionalidad de la fecha y hora de instalacion, pero además se debe agregar la franja hjoraria preferida por el cliente para recibir la llamda.

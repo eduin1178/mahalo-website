@@ -184,10 +184,18 @@ export default async function OrderDetailPage({
           <Section title="Schedule">
             <dl className="mb-4 grid gap-2 text-sm">
               <Field
-                label="Scheduled at"
+                label="Preferred call"
+                value={fmtDateTime(order.preferredCallAt)}
+              />
+              <Field
+                label="Installation"
                 value={fmtDateTime(order.scheduledAt)}
               />
             </dl>
+            <p className="mb-4 text-xs text-muted-foreground">
+              The customer chose the preferred call time at checkout. Set the
+              installation date below after confirming the order by phone.
+            </p>
             <RescheduleForm
               orderId={order.id}
               currentScheduledAt={order.scheduledAt}

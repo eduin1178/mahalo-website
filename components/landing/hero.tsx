@@ -1,17 +1,18 @@
 import Image from "next/image";
 
+import { ProviderLogoImage } from "@/components/providers/provider-logo-image";
+
 import { HeroSearch } from "./hero-search";
 
-// PLACEHOLDER: text wordmarks until logo SVGs are generated and saved to
-// public/logos/. Active providers only (per business config).
-const PROVIDER_WORDMARKS = [
-  { name: "Brightspeed", className: "font-bold italic" },
-  { name: "EarthLink", className: "font-semibold" },
-  { name: "Frontier", className: "font-bold tracking-wide" },
-  { name: "Kinetic", className: "font-semibold italic" },
-  { name: "Optimum", className: "font-bold" },
-  { name: "Verizon Fios", className: "font-semibold tracking-tight" },
-] as const;
+type HeroProvider = {
+  id: string;
+  name: string;
+  logoUrl: string | null;
+};
+
+interface HeroProps {
+  providers: HeroProvider[];
+}
 
 const BENEFITS = [
   "Plans starting at $29.99/mo",
@@ -19,7 +20,7 @@ const BENEFITS = [
   "No SSN required online",
 ] as const;
 
-export function Hero() {
+export function Hero({ providers }: HeroProps) {
   return (
     <section
       id="hero"
@@ -67,22 +68,32 @@ export function Hero() {
           ))}
         </ul>
 
-        {/* Provider wordmark strip */}
-        <div className="mt-6 w-full border-t border-white/15 pt-8">
-          <p className="mb-5 text-xs font-medium tracking-widest text-white/70 uppercase">
-            Authorized Reseller
-          </p>
-          <ul className="flex flex-wrap items-center justify-center gap-x-5 gap-y-3 sm:gap-x-8 md:gap-x-12">
-            {PROVIDER_WORDMARKS.map((p) => (
-              <li
-                key={p.name}
-                className={`text-sm text-white/85 sm:text-base md:text-lg ${p.className}`}
-              >
-                {p.name}
-              </li>
-            ))}
-          </ul>
-        </div>
+        {/* Provider strip — logos from the provider catalog, with a uniform
+            text fallback when a provider has no logo. */}
+        {providers.length > 0 ? (
+          <div className="mt-6 w-full border-t border-white/15 pt-8">
+            <p className="mb-5 text-xs font-medium tracking-widest text-white/70 uppercase">
+              Authorized Reseller
+            </p>
+            <ul className="flex flex-wrap items-center justify-center gap-x-5 gap-y-4 sm:gap-x-8 md:gap-x-12">
+              {providers.map((p) => (
+                <li key={p.id} className="flex items-center">
+                  {p.logoUrl ? (
+                    <ProviderLogoImage
+                      src={p.logoUrl}
+                      alt={p.name}
+                      className="h-7 w-auto max-w-[140px] object-contain sm:h-8 md:h-9"
+                    />
+                  ) : (
+                    <span className="text-sm font-semibold text-white/85 sm:text-base md:text-lg">
+                      {p.name}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </div>
 
       {/* Sentinel for IntersectionObserver (header + mobile sticky bar) */}

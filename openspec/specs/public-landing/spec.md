@@ -3,9 +3,7 @@
 ## Purpose
 
 Public-facing landing page (`/`) that markets Mahalo's internet-comparator service to anonymous US visitors and funnels them into the ZIP-based search flow. Covers visual hierarchy, content sections, trust signals, price anchoring, and mobile conversion patterns.
-
 ## Requirements
-
 ### Requirement: Landing page is internet-only and in English
 
 The public landing page at `/` SHALL present only internet-service content. It SHALL NOT mention or link to mobile, voice, or streaming-TV products even though Mahalo sells them through other surfaces. All visible copy on the landing SHALL be in US English.
@@ -164,7 +162,6 @@ The site header SHALL render with a solid light surface compatible with the unmo
 - **THEN** the Mahalo logo uses the default logo rendering without rounded-corner, border, padding, or surface treatment
 - **AND** the header link still has the accessible label for returning home
 
-
 ### Requirement: Landing animations use CSS and Tailwind only
 
 The landing visual polish SHALL use CSS, Tailwind utilities, and the existing `tw-animate-css` setup for animation. It SHALL NOT add Remotion, Framer Motion, GSAP, Lottie, or any new runtime animation package for the landing UI.
@@ -293,3 +290,26 @@ The redesign SHALL be implemented using the existing Tailwind v4, shadcn/ui, luc
 #### Scenario: Out-of-scope surfaces untouched
 - **WHEN** the change is implemented
 - **THEN** files under `app/(public)/checkout/**`, `app/admin/**`, `lib/providers/**`, `lib/plans/**` (queries), Drizzle schema/migrations, Clerk config, Resend/email code, and Docker config show no changes attributable to this redesign
+
+### Requirement: Hero provider strip SHALL source logos from the provider data source with a uniform name fallback
+
+The hero's "Authorized Reseller" provider strip SHALL render the active providers from the provider data source (`listProviders()`), not a hardcoded list. For each provider, the strip SHALL display the provider's `logoUrl` image when present; when `logoUrl` is absent it SHALL fall back to the provider name rendered in a **single uniform text style** (no per-provider italic or weight variation). The hardcoded wordmark list SHALL be removed.
+
+#### Scenario: Provider has a logo
+- **WHEN** the hero strip renders a provider whose `logoUrl` is set
+- **THEN** it SHALL display the logo image as that provider's identity in the strip.
+
+#### Scenario: Provider has no logo
+- **WHEN** the hero strip renders a provider whose `logoUrl` is null
+- **THEN** it SHALL display the provider name as text
+- **AND** the name SHALL use the same uniform text style as every other name fallback in the strip (no mixed italic/non-italic or weight variation).
+
+#### Scenario: Strip reads from the active provider catalog
+- **WHEN** the hero renders
+- **THEN** the strip SHALL list only active providers obtained from `listProviders()`
+- **AND** SHALL NOT render any hardcoded provider wordmarks.
+
+#### Scenario: No active providers
+- **WHEN** there are no active providers
+- **THEN** the hero SHALL omit the provider strip rather than render placeholder wordmarks.
+

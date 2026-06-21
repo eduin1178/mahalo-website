@@ -366,7 +366,7 @@ export async function finalizePhase2(
   redirect("/checkout/schedule");
 }
 
-const scheduleSchema = z.object({
+const callWindowSchema = z.object({
   year: z.number().int().min(2024).max(2100),
   month: z.number().int().min(1).max(12),
   day: z.number().int().min(1).max(31),
@@ -375,13 +375,18 @@ const scheduleSchema = z.object({
   consent: z.literal(true),
 });
 
-export type ScheduleInstallationInput = z.input<typeof scheduleSchema>;
+export type ScheduleInstallationInput = z.input<typeof callWindowSchema>;
 export type ScheduleInstallationResult = { ok: false; error: string };
 
+/**
+ * Persist the customer's preferred window for the advisor's confirmation call
+ * (final checkout step) and the consent stamp. Does NOT set the installation
+ * schedule (`scheduledAt`) — an agent sets that later in the back office.
+ */
 export async function scheduleInstallation(
   input: ScheduleInstallationInput,
 ): Promise<ScheduleInstallationResult> {
-  const parsed = scheduleSchema.safeParse(input);
+  const parsed = callWindowSchema.safeParse(input);
   if (!parsed.success) {
     const consentMissing = parsed.error.issues.some(
       (issue) => issue.path[0] === "consent",
@@ -395,21 +400,21 @@ export async function scheduleInstallation(
   }
   const { year, month, day, hour } = parsed.data;
 
-  const scheduledAt = new Date(Date.UTC(year, month - 1, day, hour, 0, 0, 0));
+  const preferredCallAt = new Date(Date.UTC(year, month - 1, day, hour, 0, 0, 0));
   if (
-    scheduledAt.getUTCFullYear() !== year ||
-    scheduledAt.getUTCMonth() !== month - 1 ||
-    scheduledAt.getUTCDate() !== day
+    preferredCallAt.getUTCFullYear() !== year ||
+    preferredCallAt.getUTCMonth() !== month - 1 ||
+    preferredCallAt.getUTCDate() !== day
   ) {
     return { ok: false, error: "Pick a valid date." };
   }
 
-  const dow = scheduledAt.getUTCDay();
+  const dow = preferredCallAt.getUTCDay();
   if (dow === 0) {
-    return { ok: false, error: "We don't install on Sundays." };
+    return { ok: false, error: "Pick a day from Monday to Saturday." };
   }
 
-  if (scheduledAt.getTime() <= Date.now()) {
+  if (preferredCallAt.getTime() <= Date.now()) {
     return { ok: false, error: "Pick a future date and time." };
   }
 
@@ -425,7 +430,7 @@ export async function scheduleInstallation(
   await db
     .update(orders)
     .set({
-      scheduledAt,
+      preferredCallAt,
       termsAcceptedAt: new Date(),
       termsVersion: CONSENT_VERSION,
       updatedAt: new Date(),
@@ -450,7 +455,7 @@ export async function submitOrder(): Promise<SubmitOrderResult> {
     !draft.planId ||
     !draft.zipCode ||
     !draft.installationAddress ||
-    !draft.scheduledAt
+    !draft.preferredCallAt
   ) {
     return { ok: false, error: "Order is incomplete." };
   }

@@ -24,6 +24,7 @@ export type OrderListRow = {
   id: string;
   status: OrderStatus;
   scheduledAt: Date | null;
+  preferredCallAt: Date | null;
   createdAt: Date;
   customer: { id: string; firstName: string; lastName: string; email: string } | null;
   provider: { id: string; name: string } | null;
@@ -90,6 +91,7 @@ export async function listOrders(filters: OrderListFilters = {}): Promise<OrderL
       id: orders.id,
       status: orders.status,
       scheduledAt: orders.scheduledAt,
+      preferredCallAt: orders.preferredCallAt,
       createdAt: orders.createdAt,
       customerId: customers.id,
       customerFirstName: customers.firstName,
@@ -113,6 +115,7 @@ export async function listOrders(filters: OrderListFilters = {}): Promise<OrderL
     id: r.id,
     status: r.status,
     scheduledAt: r.scheduledAt,
+    preferredCallAt: r.preferredCallAt,
     createdAt: r.createdAt,
     customer: r.customerId
       ? {

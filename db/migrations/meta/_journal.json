@@ -57,6 +57,13 @@
       "when": 1782056614747,
       "tag": "0007_cheerful_fantastic_four",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1782069881660,
+      "tag": "0008_rare_black_knight",
+      "breakpoints": true
     }
   ]
 }

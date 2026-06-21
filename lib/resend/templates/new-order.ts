@@ -103,6 +103,9 @@ export function renderNewOrderEmail(data: NewOrderEmailData): {
       <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:.08em;color:#1d4ed8;margin:16px 0 8px">Installation address</h2>
       <pre style="margin:0 0 16px;font-family:inherit;white-space:pre-wrap;line-height:1.5">${fmtAddress(order.installationAddress)}</pre>
 
+      <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:.08em;color:#1d4ed8;margin:16px 0 8px">Preferred call time</h2>
+      <p style="margin:0 0 16px">${escape(fmtDate(order.preferredCallAt))}</p>
+
       <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:.08em;color:#1d4ed8;margin:16px 0 8px">Scheduled installation</h2>
       <p style="margin:0">${escape(fmtDate(order.scheduledAt))}</p>
     </div>
@@ -134,7 +137,8 @@ export function renderNewOrderEmail(data: NewOrderEmailData): {
       ? `${order.installationAddress.line1}${order.installationAddress.line2 ? `, ${order.installationAddress.line2}` : ""}, ${order.installationAddress.city}, ${order.installationAddress.state} ${order.installationAddress.zip}`
       : "—",
     "",
-    `Scheduled: ${fmtDate(order.scheduledAt)}`,
+    `Preferred call time: ${fmtDate(order.preferredCallAt)}`,
+    `Scheduled installation: ${fmtDate(order.scheduledAt)}`,
   ].join("\n");
 
   return { subject, html, text };

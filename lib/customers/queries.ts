@@ -108,6 +108,7 @@ export type CustomerOrderRow = {
   status: OrderStatus;
   createdAt: Date;
   scheduledAt: Date | null;
+  preferredCallAt: Date | null;
   provider: { id: string; name: string } | null;
   plan: { id: string; name: string } | null;
 };
@@ -135,6 +136,7 @@ export async function getCustomerById(
       status: orders.status,
       createdAt: orders.createdAt,
       scheduledAt: orders.scheduledAt,
+      preferredCallAt: orders.preferredCallAt,
       providerId: providers.id,
       providerName: providers.name,
       planId: plans.id,
@@ -153,6 +155,7 @@ export async function getCustomerById(
       status: r.status,
       createdAt: r.createdAt,
       scheduledAt: r.scheduledAt,
+      preferredCallAt: r.preferredCallAt,
       provider: r.providerId ? { id: r.providerId, name: r.providerName! } : null,
       plan: r.planId ? { id: r.planId, name: r.planName! } : null,
     })),

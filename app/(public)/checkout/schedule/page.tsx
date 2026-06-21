@@ -16,16 +16,16 @@ export default async function CheckoutSchedulePage() {
   const breakdown = await calculateTotal(draft, draft.autopayEnabled ?? false);
   if (!breakdown) redirect("/checkout/plan");
 
-  const existing = draft.scheduledAt ? new Date(draft.scheduledAt) : null;
+  const existing = draft.preferredCallAt ? new Date(draft.preferredCallAt) : null;
 
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold tracking-tight text-mahalo-navy-900 sm:text-3xl">
-          Installation and confirmation
+          When should we call you?
         </h1>
         <p className="text-sm text-muted-foreground">
-          Choose when our technician should install your service.
+          Pick the best time for our advisor to call and confirm your order.
         </p>
       </header>
 

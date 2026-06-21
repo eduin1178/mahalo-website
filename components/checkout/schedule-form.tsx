@@ -65,7 +65,7 @@ export function ScheduleForm({
     setConsentError(null);
 
     if (!date || hour === null) {
-      setServerError("Choose a day and an installation window.");
+      setServerError("Choose a day and a time window.");
       return;
     }
 
@@ -97,10 +97,11 @@ export function ScheduleForm({
       <SectionCard>
         <div className="flex flex-col gap-1">
           <h2 className="text-base font-semibold text-mahalo-navy-900">
-            Schedule installation
+            Preferred call time
           </h2>
           <p className="text-sm text-muted-foreground">
-            Pick a day (Monday through Saturday) and an installation window.
+            Pick a day (Monday through Saturday) and a time window for our
+            advisor to call you.
           </p>
         </div>
 
@@ -118,11 +119,11 @@ export function ScheduleForm({
 
           <div className="flex flex-col gap-2">
             <span className="text-sm font-medium text-mahalo-navy-900">
-              Installation window
+              Call window
             </span>
             <div
               role="radiogroup"
-              aria-label="Installation time window"
+              aria-label="Call time window"
               className={cn(
                 "grid grid-cols-1 gap-2 sm:grid-cols-3 lg:grid-cols-1",
                 !date && "opacity-60",
@@ -165,7 +166,7 @@ export function ScheduleForm({
 
         {date && hour !== null ? (
           <p className="text-sm text-mahalo-navy-900">
-            Installation:{" "}
+            We&apos;ll call you:{" "}
             <span className="font-semibold">
               {date.toLocaleDateString("en-US", {
                 weekday: "long",

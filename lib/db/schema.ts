@@ -127,7 +127,13 @@ export const orders = pgTable("orders", {
   autopayEnabled: boolean("autopay_enabled").notNull().default(false),
   installationAddress: jsonb("installation_address").$type<AddressJson | null>(),
   zipCode: varchar("zip_code", { length: 5 }),
+  // Installation date/time. Set by an agent in the back office AFTER the
+  // confirmation call — not captured at checkout. Null on new orders.
   scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
+  // Customer's preferred window for the advisor's confirmation call, chosen at
+  // the final checkout step. The UTC hour encodes the window start (8, 10, 14);
+  // the two-hour interval is derived (see lib/orders/installation-window.ts).
+  preferredCallAt: timestamp("preferred_call_at", { withTimezone: true }),
   // Proof-of-consent captured when the customer submits the order: acceptance of
   // the Terms of Service + Privacy Policy and the transactional contact opt-in.
   termsAcceptedAt: timestamp("terms_accepted_at", { withTimezone: true }),

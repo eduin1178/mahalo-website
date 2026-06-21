@@ -1,0 +1,1 @@
+ALTER TABLE "orders" ADD COLUMN "preferred_call_at" timestamp with time zone;

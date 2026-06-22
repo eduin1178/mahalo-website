@@ -75,17 +75,20 @@ export function Hero({ providers }: HeroProps) {
             <p className="mb-5 text-xs font-medium tracking-widest text-white/70 uppercase">
               Authorized Reseller
             </p>
-            <ul className="flex flex-wrap items-center justify-center gap-x-5 gap-y-4 sm:gap-x-8 md:gap-x-12">
+            <ul className="flex flex-wrap items-center justify-center gap-x-3 gap-y-3 sm:gap-x-4">
               {providers.map((p) => (
-                <li key={p.id} className="flex items-center">
+                <li
+                  key={p.id}
+                  className="flex h-[60px] w-[140px] items-center justify-center rounded-lg bg-gradient-to-b from-white/95 to-white/75 px-4 shadow-sm ring-1 ring-black/5 backdrop-blur-md transition-shadow hover:shadow-md sm:h-16 sm:w-[156px]"
+                >
                   {p.logoUrl ? (
                     <ProviderLogoImage
                       src={p.logoUrl}
                       alt={p.name}
-                      className="h-7 w-auto max-w-[140px] object-contain sm:h-8 md:h-9"
+                      className="max-h-8 w-auto max-w-full object-contain sm:max-h-9"
                     />
                   ) : (
-                    <span className="text-sm font-semibold text-white/85 sm:text-base md:text-lg">
+                    <span className="text-sm font-semibold text-mahalo-navy-900 sm:text-base md:text-lg">
                       {p.name}
                     </span>
                   )}

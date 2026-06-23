@@ -125,7 +125,7 @@ export function ScheduleForm({
               role="radiogroup"
               aria-label="Call time window"
               className={cn(
-                "grid grid-cols-1 gap-2 sm:grid-cols-3 lg:grid-cols-1",
+                "grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1",
                 !date && "opacity-60",
               )}
             >
@@ -234,7 +234,7 @@ export function ScheduleForm({
           className="h-12 w-full rounded-xl px-10 text-base font-semibold sm:w-auto"
           disabled={pending || !date || hour === null || !consent}
         >
-          {pending ? "Submitting…" : "Place order"}
+          {pending ? "Submitting…" : "Submit"}
         </Button>
       </div>
     </form>

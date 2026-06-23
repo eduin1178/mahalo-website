@@ -79,7 +79,7 @@ export function Hero({ providers }: HeroProps) {
               {providers.map((p) => (
                 <li
                   key={p.id}
-                  className="flex h-[60px] w-[140px] items-center justify-center rounded-lg bg-gradient-to-b from-white/95 to-white/75 px-4 shadow-sm ring-1 ring-black/5 backdrop-blur-md transition-shadow hover:shadow-md sm:h-16 sm:w-[156px]"
+                  className="provider-card flex h-[60px] w-[140px] items-center justify-center rounded-lg bg-gradient-to-b from-white/95 to-white/75 px-4 shadow-sm ring-1 ring-black/5 backdrop-blur-md transition-shadow hover:shadow-md sm:h-16 sm:w-[156px]"
                 >
                   {p.logoUrl ? (
                     <ProviderLogoImage

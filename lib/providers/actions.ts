@@ -19,6 +19,7 @@ const providerCreateSchema = z.object({
     .trim()
     .regex(HEX_COLOR, "Must be a hex color (e.g. #0B1F4D)"),
   isActive: z.boolean().default(true),
+  isFallback: z.boolean().default(false),
 });
 
 const providerUpdateSchema = providerCreateSchema.partial().extend({
@@ -45,6 +46,7 @@ export async function createProvider(
     name: formData.get("name"),
     primaryColor: formData.get("primaryColor"),
     isActive: isActiveRaw === null ? true : parseBoolean(isActiveRaw),
+    isFallback: parseBoolean(formData.get("isFallback")),
   });
 
   if (!parsed.success) {
@@ -63,6 +65,7 @@ export async function createProvider(
         name: parsed.data.name,
         primaryColor: parsed.data.primaryColor,
         isActive: parsed.data.isActive,
+        isFallback: parsed.data.isFallback,
       })
       .returning({ id: providers.id });
 
@@ -90,6 +93,9 @@ export async function updateProvider(
     id: formData.get("id"),
     name: formData.get("name") ?? undefined,
     primaryColor: formData.get("primaryColor") ?? undefined,
+    // Native checkbox: absent means unchecked, so always coerce to a boolean
+    // (rather than undefined) so toggling the flag off actually persists.
+    isFallback: parseBoolean(formData.get("isFallback")),
   };
 
   const parsed = providerUpdateSchema.safeParse(raw);

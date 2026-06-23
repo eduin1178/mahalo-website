@@ -64,6 +64,13 @@
       "when": 1782069881660,
       "tag": "0008_rare_black_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1782168126653,
+      "tag": "0009_youthful_gabe_jones",
+      "breakpoints": true
     }
   ]
 }

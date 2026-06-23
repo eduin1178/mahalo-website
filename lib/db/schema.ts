@@ -45,6 +45,10 @@ export const providers = pgTable("providers", {
   logoUrl: text("logo_url"),
   primaryColor: varchar("primary_color", { length: 9 }).notNull(),
   isActive: boolean("is_active").notNull().default(true),
+  // Last-resort carrier: when true, this provider is offered only for ZIPs that
+  // no ordinary (non-fallback) provider covers, and is treated as universal
+  // (offered regardless of provider_coverage rows). See lib/coverage/availability.ts.
+  isFallback: boolean("is_fallback").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

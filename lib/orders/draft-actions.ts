@@ -19,8 +19,8 @@ import {
   type AddressJson,
 } from "@/lib/db/schema";
 import { CONSENT_VERSION } from "@/lib/legal/consent";
+import { isValidWindowHour } from "@/lib/orders/installation-window";
 import { sendNewOrderEmail } from "@/lib/resend/send";
-import { validateAddress } from "@/lib/usps/client";
 import { triggerWebhook } from "@/lib/webhook/trigger";
 
 import {
@@ -49,20 +49,10 @@ export async function createDraftOrder(input: {
     return { ok: false, error: "Enter a 5-digit ZIP code." };
   }
 
-  const validation = await validateAddress(parsed.data.zip);
-  if (!validation.ok) {
-    return { ok: false, error: validation.error.message };
-  }
-
-  const zip = validation.zip;
-  const installationAddress = validation.normalized.street
-    ? {
-        line1: validation.normalized.street,
-        city: validation.normalized.city ?? "",
-        state: validation.normalized.state ?? "",
-        zip,
-      }
-    : null;
+  // ZIP-only search: availability is resolved from the database, not an
+  // external address service. The Zod `/^\d{5}$/` check above is the only ZIP
+  // gate. The installation address is collected later, in the Details step.
+  const zip = parsed.data.zip;
 
   const db = getDb();
   const [created] = await db
@@ -70,7 +60,7 @@ export async function createDraftOrder(input: {
     .values({
       status: "Draft",
       zipCode: zip,
-      installationAddress,
+      installationAddress: null,
     })
     .returning({ id: orders.id });
 
@@ -370,8 +360,12 @@ const callWindowSchema = z.object({
   year: z.number().int().min(2024).max(2100),
   month: z.number().int().min(1).max(12),
   day: z.number().int().min(1).max(31),
-  // Only the three fixed window start hours are accepted.
-  hour: z.union([z.literal(8), z.literal(10), z.literal(14)]),
+  // Only the fixed window start hours are accepted (single source of truth:
+  // lib/orders/installation-window.ts).
+  hour: z
+    .number()
+    .int()
+    .refine(isValidWindowHour, "Pick a valid time window."),
   consent: z.literal(true),
 });
 

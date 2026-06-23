@@ -436,17 +436,17 @@ The final checkout step (step 4, `/checkout/schedule`) SHALL let the customer ch
 - **THEN** the system SHALL persist the chosen window to `preferredCallAt` and the consent proof, submit the order via the server action, and navigate to `/checkout/confirmation`
 - **AND** the order's `scheduledAt` (installation) SHALL remain null.
 
-### Requirement: The advisor-call window selector SHALL offer exactly three fixed time windows
+### Requirement: The advisor-call window selector SHALL offer exactly four fixed time windows
 
-The final step SHALL offer exactly three selectable call windows: **8–10 AM**, **10 AM–12 PM**, and **2–4 PM**. No other times SHALL be selectable. The order SHALL persist only the **start hour** of the chosen window (one of `8`, `10`, `14`) in `preferredCallAt`. The two-hour **interval** form (e.g. "8 – 10 AM") SHALL be rendered ONLY inside the selector; wherever the preferred call window is displayed downstream (confirmation page, order email, webhook payload, admin order views) it SHALL render the **start hour** (e.g. "8:00 AM").
+The final step SHALL offer exactly four selectable call windows: **8–10 AM**, **10 AM–12 PM**, **2–4 PM**, and **5–8 PM**. No other times SHALL be selectable. The order SHALL persist only the **start hour** of the chosen window (one of `8`, `10`, `14`, `17`) in `preferredCallAt`. The **interval** form (e.g. "8 – 10 AM") SHALL be rendered ONLY inside the selector; wherever the preferred call window is displayed downstream (confirmation page, order email, webhook payload, admin order views) it SHALL render the **start hour** (e.g. "8:00 AM").
 
 #### Scenario: Time-window options
 - **WHEN** the call-window selector renders for a chosen date
-- **THEN** it SHALL present exactly three options labeled "8 – 10 AM", "10 – 12 PM", and "2 – 4 PM"
+- **THEN** it SHALL present exactly four options labeled "8 – 10 AM", "10 – 12 PM", "2 – 4 PM", and "5 – 8 PM"
 - **AND** no other time options SHALL be present.
 
 #### Scenario: Server rejects an out-of-set window
-- **WHEN** a submission arrives with a start hour other than 8, 10, or 14
+- **WHEN** a submission arrives with a start hour other than 8, 10, 14, or 17
 - **THEN** the server action SHALL reject it with a user-facing error and SHALL NOT persist the call window.
 
 #### Scenario: Start hour shown downstream
@@ -477,4 +477,66 @@ After checkout, an order's installation schedule (`scheduledAt`) SHALL be null u
 - **WHEN** an agent opens the order detail in the back office
 - **THEN** the page SHALL show the customer's preferred call window as read-only text
 - **AND** SHALL present the existing installation-scheduling control to set or change `scheduledAt`.
+
+### Requirement: Coverage resolution SHALL treat fallback providers as last-resort, universal offerings
+
+The provider availability resolution for a customer's ZIP SHALL distinguish fallback providers (those flagged `is_fallback`) from ordinary providers. Fallback providers SHALL be offered ONLY when no ordinary (non-fallback) active provider with at least one active plan covers the ZIP. When at least one ordinary provider qualifies, fallback providers SHALL be excluded from the results entirely, regardless of whether they have a matching coverage row. When no ordinary provider qualifies, every active fallback provider that has at least one active plan SHALL be offered, even if the ZIP is absent from that provider's `provider_coverage` rows (fallback providers are universal). Fallback providers SHALL still be subject to the existing "providers without active plans are not offered" rule. This requirement governs only the set of providers feeding the wizard; downstream routing (single-provider skip, multi-provider screen, empty state) operates on the resolved set unchanged.
+
+#### Scenario: Ordinary provider exists — fallback excluded
+- **WHEN** the ZIP is covered by at least one active non-fallback provider that has active plans
+- **THEN** the resolved provider set SHALL contain only the qualifying non-fallback providers
+- **AND** no fallback provider SHALL appear, even one whose `provider_coverage` includes that ZIP.
+
+#### Scenario: No ordinary coverage — fallback surfaced universally
+- **WHEN** no active non-fallback provider with active plans covers the ZIP
+- **AND** at least one active fallback provider has active plans
+- **THEN** the resolved provider set SHALL contain every qualifying fallback provider
+- **AND** a fallback provider SHALL be included even when the ZIP is not present in its `provider_coverage` rows.
+
+#### Scenario: Sole fallback skips the provider screen
+- **WHEN** the resolved set contains exactly one provider (a fallback)
+- **THEN** the wizard SHALL behave as for any single-provider ZIP, rendering that provider's plans directly on the Plan step without the provider-selection screen.
+
+#### Scenario: Multiple fallbacks route through the provider screen
+- **WHEN** the resolved set contains two or more fallback providers and no ordinary provider
+- **THEN** the wizard SHALL render the `/checkout/provider` selection screen listing each fallback provider as a selectable card.
+
+#### Scenario: Fallback without active plans is not offered
+- **WHEN** no ordinary provider with active plans covers the ZIP
+- **AND** the only fallback provider has no active plans
+- **THEN** the resolved provider set SHALL be empty and the wizard SHALL render the no-coverage empty state.
+
+#### Scenario: No coverage at all
+- **WHEN** no active non-fallback provider with active plans covers the ZIP
+- **AND** no active fallback provider with active plans exists
+- **THEN** the resolved provider set SHALL be empty and the wizard SHALL render the no-coverage empty state.
+
+### Requirement: ZIP availability SHALL be resolved from the database, not an external address service
+
+Provider availability for a customer's ZIP SHALL be resolved solely from the application database (`provider_coverage` joined with `providers`, plus the fallback-provider rule). The resolution path SHALL NOT call an external postal/address service (USPS) to validate, normalize, or gate the ZIP. The only ZIP gate SHALL be the 5-digit format check (`/^\d{5}$/`) enforced at input time; a well-formed ZIP SHALL always reach database resolution. This requirement governs both draft creation (the ZIP search) and provider resolution feeding the wizard. The external address client MAY still be used by other flows (e.g. future Details-step address verification); this requirement constrains only the ZIP-availability path.
+
+#### Scenario: Well-formed ZIP resolves from the database only
+
+- **WHEN** a user submits a 5-digit ZIP and the system resolves available providers
+- **THEN** the system SHALL query `provider_coverage`/`providers` (and the fallback rule) to build the provider set
+- **AND** SHALL NOT call the USPS address service as part of that resolution.
+
+#### Scenario: Well-formed but uncovered or unknown ZIP surfaces the fallback providers
+
+- **WHEN** a user submits a 5-digit ZIP that no ordinary (non-fallback) active provider with active plans covers — including a ZIP that does not exist in any external postal database
+- **THEN** the system SHALL resolve the active fallback provider(s) with active plans as the available set
+- **AND** SHALL NOT return an address-lookup error (e.g. "We couldn't find that ZIP code") for that ZIP.
+
+#### Scenario: Malformed ZIP is rejected before resolution
+
+- **WHEN** a user submits a value that is not exactly five digits
+- **THEN** the system SHALL reject it with a format validation message
+- **AND** SHALL NOT create a draft or attempt provider resolution.
+
+#### Scenario: Draft creation does not depend on an external address service
+
+- **WHEN** `createDraftOrder` runs for a format-valid ZIP
+- **THEN** it SHALL persist the draft with the validated ZIP and a null `installationAddress`
+- **AND** SHALL NOT call the USPS address service
+- **AND** an outage or rate-limit of that external service SHALL NOT block draft creation.
 

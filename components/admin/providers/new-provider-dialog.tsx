@@ -75,6 +75,22 @@ export function NewProviderDialog() {
             ) : null}
           </div>
           <input type="hidden" name="isActive" value="true" />
+          <label htmlFor="np-fallback" className="flex items-start gap-3">
+            <input
+              id="np-fallback"
+              name="isFallback"
+              type="checkbox"
+              className="mt-0.5 size-4 rounded border-input accent-mahalo-blue-600"
+            />
+            <span className="grid gap-0.5">
+              <span className="text-sm font-medium leading-none">
+                Fallback provider
+              </span>
+              <span className="text-xs text-muted-foreground">
+                Shown only when no other provider covers the ZIP.
+              </span>
+            </span>
+          </label>
           {generalError && !errors ? (
             <p className="text-sm text-destructive">{generalError}</p>
           ) : null}

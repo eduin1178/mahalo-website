@@ -13,9 +13,15 @@ type Props = {
   id: string;
   initialName: string;
   initialColor: string;
+  initialFallback: boolean;
 };
 
-export function ProviderEditForm({ id, initialName, initialColor }: Props) {
+export function ProviderEditForm({
+  id,
+  initialName,
+  initialColor,
+  initialFallback,
+}: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [errors, setErrors] = useState<Record<string, string[]> | null>(null);
@@ -72,6 +78,26 @@ export function ProviderEditForm({ id, initialName, initialColor }: Props) {
         {errors?.primaryColor?.[0] ? (
           <p className="text-xs text-destructive">{errors.primaryColor[0]}</p>
         ) : null}
+      </div>
+      <div className="grid gap-2">
+        <label htmlFor="ep-fallback" className="flex items-start gap-3">
+          <input
+            id="ep-fallback"
+            name="isFallback"
+            type="checkbox"
+            defaultChecked={initialFallback}
+            className="mt-0.5 size-4 rounded border-input accent-mahalo-blue-600"
+          />
+          <span className="grid gap-0.5">
+            <span className="text-sm font-medium leading-none">
+              Fallback provider
+            </span>
+            <span className="text-xs text-muted-foreground">
+              Shown only when no other provider covers the ZIP. Offered in every
+              area regardless of coverage.
+            </span>
+          </span>
+        </label>
       </div>
       <div className="flex items-center gap-3">
         <Button type="submit" variant="solid" disabled={pending}>

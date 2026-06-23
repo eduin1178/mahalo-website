@@ -109,6 +109,7 @@ export default async function ProviderDetailPage({
               id={provider.id}
               initialName={provider.name}
               initialColor={provider.primaryColor}
+              initialFallback={provider.isFallback}
             />
           </section>
         </TabsContent>

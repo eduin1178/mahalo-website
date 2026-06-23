@@ -3,11 +3,16 @@ import { closeDb, getDb } from "./client";
 import { providers } from "./schema";
 import { sql } from "drizzle-orm";
 
-const seedProviders = [
+const seedProviders: {
+  name: string;
+  primaryColor: string;
+  isFallback?: boolean;
+}[] = [
   { name: "Kinetic", primaryColor: "#E8511C" },
   { name: "Brightspeed", primaryColor: "#FF6B00" },
   { name: "Frontier", primaryColor: "#CE2026" },
-  { name: "EarthLink", primaryColor: "#00A651" },
+  // Last-resort carrier: only surfaced where no other provider covers the ZIP.
+  { name: "EarthLink", primaryColor: "#00A651", isFallback: true },
   { name: "Optimum", primaryColor: "#005EB8" },
   { name: "Verizon Fios", primaryColor: "#CD040B" },
   { name: "AT&T", primaryColor: "#00A8E0" },
@@ -17,15 +22,24 @@ const seedProviders = [
 async function main() {
   try {
     const db = getDb();
-    console.log("[db:seed] upserting 8 providers …");
+    console.log("[db:seed] upserting 8 providers ï¿½");
 
     for (const p of seedProviders) {
       await db
         .insert(providers)
-        .values({ name: p.name, primaryColor: p.primaryColor, isActive: true })
+        .values({
+          name: p.name,
+          primaryColor: p.primaryColor,
+          isActive: true,
+          isFallback: p.isFallback ?? false,
+        })
         .onConflictDoUpdate({
           target: providers.name,
-          set: { primaryColor: p.primaryColor, updatedAt: sql`now()` },
+          set: {
+            primaryColor: p.primaryColor,
+            isFallback: p.isFallback ?? false,
+            updatedAt: sql`now()`,
+          },
         });
     }
 

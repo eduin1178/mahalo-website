@@ -56,6 +56,9 @@ export async function listCoverageByProvider(
   };
 }
 
+// Ordinary (non-fallback) providers covering a ZIP. Fallback providers are
+// excluded here on purpose; they are resolved separately and only as a
+// last resort (see getAvailableProviders).
 export async function findProvidersByZip(zip: string): Promise<Provider[]> {
   if (!/^\d{5}$/.test(zip)) return [];
   const db = getDb();
@@ -64,8 +67,23 @@ export async function findProvidersByZip(zip: string): Promise<Provider[]> {
     .from(providerCoverage)
     .innerJoin(providers, eq(providers.id, providerCoverage.providerId))
     .where(
-      and(eq(providerCoverage.zipCode, zip), eq(providers.isActive, true)),
+      and(
+        eq(providerCoverage.zipCode, zip),
+        eq(providers.isActive, true),
+        eq(providers.isFallback, false),
+      ),
     )
     .orderBy(asc(providers.name));
   return rows.map((r) => r.provider);
+}
+
+// Active fallback providers. Intentionally NOT joined to provider_coverage:
+// fallback carriers are universal and offered regardless of ZIP coverage rows.
+export async function listFallbackProviders(): Promise<Provider[]> {
+  const db = getDb();
+  return db
+    .select()
+    .from(providers)
+    .where(and(eq(providers.isActive, true), eq(providers.isFallback, true)))
+    .orderBy(asc(providers.name));
 }

@@ -35,6 +35,18 @@ const REQUEST_TIMEOUT_MS = 5_000;
 const DEFAULT_BASE = "https://apis.usps.com";
 const TOKEN_REFRESH_MARGIN_MS = 60_000;
 
+// User-facing copy (US market). Never leak transport details (HTTP status,
+// "USPS …") to the customer — those go to the server logs instead.
+const ZIP_NOT_FOUND_MSG =
+  "We couldn't find that ZIP code. Please double-check it and try again.";
+const LOCATION_NOT_FOUND_MSG =
+  "We couldn't find that address or ZIP code. Please check it and try again.";
+const RATE_LIMITED_MSG =
+  "Too many requests right now. Please wait a moment and try again.";
+const SERVICE_UNAVAILABLE_MSG =
+  "We couldn't check availability right now. Please try again in a moment.";
+const TIMEOUT_MSG = "The request took too long. Please try again.";
+
 type CacheEntry = { value: ValidateAddressResult; expiresAt: number };
 const cache = new Map<string, CacheEntry>();
 
@@ -165,11 +177,13 @@ async function getAccessToken(): Promise<string | ValidateAddressError> {
         cache: "no-store",
       });
       if (!res.ok) {
+        console.warn(`[usps] auth failed: HTTP ${res.status}`);
         return {
           ok: false,
           error: {
             code: res.status === 429 ? "rate_limited" : "upstream",
-            message: `USPS auth failed (HTTP ${res.status}).`,
+            message:
+              res.status === 429 ? RATE_LIMITED_MSG : SERVICE_UNAVAILABLE_MSG,
           },
         };
       }
@@ -178,9 +192,10 @@ async function getAccessToken(): Promise<string | ValidateAddressError> {
         expires_in?: number;
       };
       if (!json.access_token) {
+        console.warn("[usps] auth returned no access token");
         return {
           ok: false,
-          error: { code: "upstream", message: "USPS auth returned no token." },
+          error: { code: "upstream", message: SERVICE_UNAVAILABLE_MSG },
         };
       }
       const ttlMs = (json.expires_in ?? 28800) * 1000;
@@ -188,11 +203,12 @@ async function getAccessToken(): Promise<string | ValidateAddressError> {
       return json.access_token;
     } catch (err) {
       const aborted = err instanceof Error && err.name === "AbortError";
+      console.warn(`[usps] auth request error: ${aborted ? "timeout" : String(err)}`);
       return {
         ok: false,
         error: {
           code: "upstream",
-          message: aborted ? "USPS auth timed out." : "USPS auth request failed.",
+          message: aborted ? TIMEOUT_MSG : SERVICE_UNAVAILABLE_MSG,
         },
       };
     } finally {
@@ -226,29 +242,35 @@ async function authedFetchJson(
       tokenCache = null;
       return authedFetchJson(url, attempt + 1);
     }
-    if (res.status === 404) {
+    // USPS answers 400 for inputs it can't resolve (e.g. a well-formed but
+    // non-existent ZIP) and 404 when nothing matches. Both are input problems
+    // from the customer's perspective, not a service outage.
+    if (res.status === 400 || res.status === 404) {
       return {
         ok: false,
-        error: { code: "not_found", message: "Address not found." },
+        error: { code: "not_found", message: LOCATION_NOT_FOUND_MSG },
       };
     }
     if (!res.ok) {
+      console.warn(`[usps] lookup failed: HTTP ${res.status}`);
       return {
         ok: false,
         error: {
           code: res.status === 429 ? "rate_limited" : "upstream",
-          message: `USPS returned HTTP ${res.status}.`,
+          message:
+            res.status === 429 ? RATE_LIMITED_MSG : SERVICE_UNAVAILABLE_MSG,
         },
       };
     }
     return { ok: true, body: await res.json() };
   } catch (err) {
     const aborted = err instanceof Error && err.name === "AbortError";
+    console.warn(`[usps] lookup request error: ${aborted ? "timeout" : String(err)}`);
     return {
       ok: false,
       error: {
         code: "upstream",
-        message: aborted ? "USPS request timed out." : "USPS request failed.",
+        message: aborted ? TIMEOUT_MSG : SERVICE_UNAVAILABLE_MSG,
       },
     };
   } finally {
@@ -259,7 +281,17 @@ async function authedFetchJson(
 async function lookupZipReal(zip: string): Promise<ValidateAddressResult> {
   const url = `${getBaseUrl()}/addresses/v3/city-state?ZIPCode=${encodeURIComponent(zip)}`;
   const result = await authedFetchJson(url);
-  if (!result.ok) return result;
+  if (!result.ok) {
+    // ZIP-only lookups deserve ZIP-specific wording (authedFetchJson is shared
+    // with address verification, which uses the broader "address or ZIP" copy).
+    if (result.error.code === "not_found") {
+      return {
+        ok: false,
+        error: { code: "not_found", message: ZIP_NOT_FOUND_MSG },
+      };
+    }
+    return result;
+  }
 
   const body = result.body as { city?: string; state?: string; ZIPCode?: string };
   const city = body.city?.trim();
@@ -267,7 +299,7 @@ async function lookupZipReal(zip: string): Promise<ValidateAddressResult> {
   if (!city || !state) {
     return {
       ok: false,
-      error: { code: "not_found", message: "ZIP code not found." },
+      error: { code: "not_found", message: ZIP_NOT_FOUND_MSG },
     };
   }
   return {
@@ -313,9 +345,10 @@ async function verifyAddressReal(classified: {
   const addr = body.address;
   const zip5 = addr?.ZIPCode?.trim();
   if (!zip5) {
+    console.warn("[usps] address verify returned no ZIP");
     return {
       ok: false,
-      error: { code: "upstream", message: "USPS did not return a ZIP." },
+      error: { code: "upstream", message: LOCATION_NOT_FOUND_MSG },
     };
   }
   return {

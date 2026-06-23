@@ -6,7 +6,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { findProvidersByZip } from "@/lib/coverage/queries";
+import { getAvailableProviders } from "@/lib/coverage/availability";
 import { providerHasActiveAddOns } from "@/lib/add-ons/queries";
 import { getDb } from "@/lib/db/client";
 import {
@@ -108,7 +108,12 @@ export async function finalizeProvider(input: {
     return { ok: false, error: "ZIP code is missing. Start over." };
   }
 
-  const covered = await findProvidersByZip(draft.zipCode);
+  // Validate against the SAME resolved availability set the wizard used to
+  // display this provider (fallback-aware, precedence-preserving), not the
+  // fallback-excluding findProvidersByZip — otherwise a displayed fallback
+  // provider would be unselectable. Single source of truth for "covered".
+  const avail = await getAvailableProviders(draft.zipCode);
+  const covered = avail.ok ? avail.providers.map((e) => e.provider) : [];
   if (!covered.some((p) => p.id === parsed.data.providerId)) {
     return { ok: false, error: "This provider isn't available for your ZIP." };
   }
@@ -160,7 +165,12 @@ export async function finalizePlan(input: {
     return { ok: false, error: "This plan is no longer available." };
   }
 
-  const covered = await findProvidersByZip(draft.zipCode);
+  // Validate against the SAME resolved availability set the wizard used to
+  // display this plan (fallback-aware, precedence-preserving), not the
+  // fallback-excluding findProvidersByZip — otherwise a displayed fallback
+  // plan would be unselectable. Single source of truth for "covered".
+  const avail = await getAvailableProviders(draft.zipCode);
+  const covered = avail.ok ? avail.providers.map((e) => e.provider) : [];
   if (!covered.some((p) => p.id === plan.providerId)) {
     return { ok: false, error: "This plan isn't available for your ZIP." };
   }
